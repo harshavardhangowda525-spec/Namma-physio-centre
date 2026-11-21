@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-electron
+release
+data-dev
+*.npcbak
+*.db
+*.db-wal
+*.db-shm

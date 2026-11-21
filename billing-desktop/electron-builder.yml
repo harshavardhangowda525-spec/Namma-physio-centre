@@ -1,0 +1,28 @@
+appId: in.infinitywebapps.nammaphysio.billing
+productName: Namma Physio Billing
+copyright: Built for Namma Physio Centre by Infinity Web & Apps
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+  - "!**/*.map"
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+npmRebuild: true
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # icon: build/icon.ico   # add a 256x256 .ico before release
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Namma Physio Billing
+  deleteAppDataOnUninstall: false
+publish: null
