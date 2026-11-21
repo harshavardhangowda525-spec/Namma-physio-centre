@@ -2,6 +2,25 @@
 
 Next.js 15 · TypeScript · Tailwind CSS 4 · Motion · Radix Dialog · Neon Postgres · Resend
 
+## 0. Current deployment
+| | |
+|---|---|
+| Live site | https://namma-physio-centre-psi.vercel.app |
+| Vercel project | `namma-physio-centre` (team *infinity web and apps*), root directory `website/`, functions in Singapore (`sin1`), Node 22 |
+| Database | Neon project `namma-physio-website` (Singapore, `aws-ap-southeast-1`). Schema applied. |
+| Configured env vars | `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL` |
+| Still to add | `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET` (enables `/admin`), `RESEND_*`, `GOOGLE_*` |
+
+Vercel's production branch is `main`. This first release was deployed from the `claude/laughing-turing-saug5v` branch; merge it into `main` so future pushes deploy automatically.
+
+**Enable the clinic admin page** (choose your own password, never share it):
+```bash
+cd website
+npm run admin:hash -- "your-own-strong-password"   # copy the printed ADMIN_PASSWORD_HASH value
+openssl rand -hex 32                               # use as ADMIN_SESSION_SECRET
+```
+Add both in Vercel → Project → Settings → Environment Variables (type *Sensitive*, Production), then redeploy.
+
 ## 1. Local development
 ```bash
 cd website
@@ -23,7 +42,7 @@ Without `DATABASE_URL`, booking requests are kept **in memory** in development s
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`, `GOOGLE_CALENDAR_ID` | Optional Google Calendar integration |
 
 ## 3. Database (Neon)
-1. Create a Neon project in the Mumbai (`aws-ap-south-1`) region and copy the pooled connection string.
+1. Create a Neon project in the nearest available region (Singapore, `aws-ap-southeast-1`; Mumbai is not offered on the current plan) and copy the pooled connection string.
 2. `DATABASE_URL=… npm run db:migrate` creates the `appointment_requests`, `imported_reviews` and `integration_tokens` tables (`db/schema.sql`).
 
 This database holds **website requests only**. It is never connected to the billing app.
