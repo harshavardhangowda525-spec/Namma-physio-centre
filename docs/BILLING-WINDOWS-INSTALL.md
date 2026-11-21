@@ -79,4 +79,4 @@ Accounts lock for 15 minutes after 5 wrong passwords. Sessions sign out after 30
 | External drive shows "Not reachable" | Plug the drive in and keep the same drive letter |
 | Forgot a staff password | An admin resets it under Staff accounts |
 | Forgot the only admin password | Restore is impossible without an admin. Keep a second admin account or the password in a safe place. |
-| Run without Electron (support) | `npm run build && set NODE_ENV=production && npm start`, then open http://127.0.0.1:5180 |
+| Run without Electron (support) | `npm install`, `npm run build`, `npm start`, then open http://127.0.0.1:5180 |
