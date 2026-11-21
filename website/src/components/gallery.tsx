@@ -7,13 +7,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Media } from "./media";
 import { staggerItem, Stagger } from "./motion";
 
+/** `src` images are illustrative (AI-generated) until the clinic supplies real photographs. */
 export type GalleryItem = { src: string | null; alt: string; caption: string; icon: LucideIcon };
 
 export const defaultGallery: GalleryItem[] = [
-  { src: null, alt: "Clinic reception", caption: "Reception", icon: Sofa },
-  { src: null, alt: "Treatment room", caption: "Treatment room", icon: Armchair },
-  { src: null, alt: "Physiotherapy equipment", caption: "Physiotherapy equipment", icon: Dumbbell },
-  { src: null, alt: "Rehabilitation session", caption: "Rehabilitation session", icon: HeartPulse },
+  { src: "/images/site/gallery-reception.jpg", alt: "A calm, modern clinic reception and waiting area", caption: "Reception", icon: Sofa },
+  { src: "/images/site/gallery-treatment-room.jpg", alt: "A private treatment room with a padded treatment table", caption: "Treatment room", icon: Armchair },
+  { src: "/images/site/gallery-equipment.jpg", alt: "Rehabilitation equipment: resistance bands, dumbbells, foam roller and balance board", caption: "Physiotherapy equipment", icon: Dumbbell },
+  { src: "/images/site/gallery-session.jpg", alt: "A patient doing a step-up exercise during a rehabilitation session", caption: "Rehabilitation session", icon: HeartPulse },
   { src: null, alt: "Doctor and team", caption: "Doctor and team", icon: Users },
 ];
 
@@ -51,7 +52,7 @@ export function Gallery({ items = defaultGallery }: { items?: GalleryItem[] }) {
             </div>
             <span className="absolute inset-x-3 bottom-3 rounded-2xl bg-white/85 px-3 py-2 text-left text-sm font-semibold text-navy-900 backdrop-blur transition group-hover:bg-white">
               {it.caption}
-              {!it.src && <span className="block text-[11px] font-normal text-muted">Photo to be supplied by the clinic</span>}
+              <span className="block text-[11px] font-normal text-muted">{it.src ? "Illustrative image" : "Photo to be supplied by the clinic"}</span>
             </span>
           </motion.button>
         ))}
@@ -71,7 +72,7 @@ export function Gallery({ items = defaultGallery }: { items?: GalleryItem[] }) {
                     <AnimatePresence mode="wait">
                       <motion.div key={idx} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.35 }}>
                         <Media src={items[idx].src} alt={items[idx].alt} icon={items[idx].icon} variant={idx} className="aspect-[16/10] w-full rounded-3xl" sizes="100vw" />
-                        <p className="mt-4 text-center text-white">{items[idx].caption} <span className="text-white/50">· {idx + 1} / {n}</span></p>
+                        <p className="mt-4 text-center text-white">{items[idx].caption} <span className="text-white/50">· {items[idx].src ? "Illustrative image · " : ""}{idx + 1} / {n}</span></p>
                       </motion.div>
                     </AnimatePresence>
                     <button type="button" onClick={() => step(-1)} aria-label="Previous photo" className="absolute top-1/2 left-2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-navy-900"><ArrowLeft className="h-5 w-5" /></button>

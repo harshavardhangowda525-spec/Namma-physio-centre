@@ -16,9 +16,9 @@ type Errors = Partial<Record<string, string>>;
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-const options: { type: VisitType; title: string; body: string; icon: typeof Home; label: string }[] = [
-  { type: "clinic", title: "Clinic Visit", body: "Visit Namma Physio Centre at our JP Nagar 8th Phase location.", icon: Building2, label: "Placeholder · clinic photo" },
-  { type: "home", title: "Home Visit", body: "Request a physiotherapist to visit you at home. Coverage area and charges are confirmed by the clinic.", icon: Home, label: "Placeholder · home visit photo" },
+const options: { type: VisitType; title: string; body: string; icon: typeof Home; label: string; image: string; alt: string }[] = [
+  { type: "clinic", title: "Clinic Visit", body: "Visit Namma Physio Centre at our JP Nagar 8th Phase location.", icon: Building2, label: "Placeholder · clinic photo", image: "/images/site/book-clinic.jpg", alt: "A bright physiotherapy treatment area with treatment tables and exercise equipment" },
+  { type: "home", title: "Home Visit", body: "Request a physiotherapist to visit you at home. Coverage area and charges are confirmed by the clinic.", icon: Home, label: "Placeholder · home visit photo", image: "/images/site/book-home.jpg", alt: "A physiotherapist arriving at a patient's home for a visit" },
 ];
 
 export function BookingFlow() {
@@ -55,7 +55,7 @@ export function BookingFlow() {
                 <input type="radio" name="visitType" value={o.type} checked={selected} onChange={() => setType(o.type)} className="sr-only" />
                 <div className="relative aspect-[16/8] overflow-hidden">
                   <motion.div className="h-full w-full" animate={{ scale: selected ? 1.05 : 1 }} transition={{ duration: 1.2, ease: EASE }}>
-                    <Media alt={o.title} icon={o.icon} variant={i + 1} className="h-full w-full" label={o.label} />
+                    <Media src={o.image} alt={o.alt} icon={o.icon} variant={i + 1} className="h-full w-full" label={o.label} sizes="(min-width: 768px) 50vw, 100vw" />
                   </motion.div>
                 </div>
                 <div className="flex items-start gap-4 p-6 sm:p-7">

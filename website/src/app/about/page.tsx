@@ -108,7 +108,7 @@ export default function AboutPage() {
       {/* Gallery */}
       <section className="container-px py-24 sm:py-32">
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
-          <Reveal><SectionHeading align="left" eyebrow="Clinic Gallery" title="Inside Namma Physio Centre" /></Reveal>
+          <Reveal><SectionHeading align="left" eyebrow="Clinic Gallery" title="A calm space for recovery" lead="Illustrative images. Photographs of the clinic itself are coming soon." /></Reveal>
           <Reveal delay={0.1}><p className="flex items-center gap-2 text-sm text-muted"><Compass className="h-4 w-4" aria-hidden /> Tap a photo to view it larger</p></Reveal>
         </div>
         <div className="mt-12"><Gallery /></div>

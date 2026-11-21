@@ -57,7 +57,7 @@ export function Footer() {
       </div>
       <div className="relative border-t border-white/10">
         <div className="container-px flex flex-col gap-3 py-6 text-xs text-white/50 md:flex-row md:items-center md:justify-between">
-          <p>© {year} {clinic.name}. All rights reserved.</p>
+          <p>© {year} {clinic.name}. All rights reserved. <span className="text-white/35">Images are illustrative.</span></p>
           <nav aria-label="Legal" className="flex gap-5">
             <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-white">Terms of Use</Link>

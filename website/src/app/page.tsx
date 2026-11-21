@@ -71,7 +71,7 @@ export default async function HomePage() {
           <div className="relative">
             <Parallax offset={30}>
               <MaskReveal delay={0.3} className="relative aspect-[4/5] overflow-hidden rounded-[2rem] shadow-[var(--shadow-lift)] sm:aspect-[5/5] lg:aspect-[4/5]">
-                <Media alt="Physiotherapy treatment session at Namma Physio Centre" icon={Sparkles} className="h-full w-full" priority badgeTop label="Placeholder · hero clinic photograph" />
+                <Media src="/images/site/hero.jpg" alt="A patient doing a guided lunge exercise with a physiotherapist" icon={Sparkles} className="h-full w-full" priority sizes="(min-width: 1024px) 45vw, 100vw" />
               </MaskReveal>
             </Parallax>
             <Reveal delay={1.1} className="absolute -bottom-6 -left-4 sm:-left-10">
@@ -85,10 +85,10 @@ export default async function HomePage() {
             </Reveal>
             <Reveal delay={1.25} className="absolute -top-4 right-2 sm:-right-6">
               <div className="glass animate-float flex items-center gap-3 rounded-2xl p-3.5 pr-5 shadow-[var(--shadow-lift)]">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-navy-900 text-white"><UserRound className="h-5 w-5" aria-hidden /></span>
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-navy-900 text-white"><Route className="h-5 w-5" aria-hidden /></span>
                 <div>
-                  <p className="text-sm font-semibold text-navy-900">{doctor.name}</p>
-                  <p className="text-xs text-muted">{doctor.role}</p>
+                  <p className="text-sm font-semibold text-navy-900">Knee &amp; post-surgical rehab</p>
+                  <p className="text-xs text-muted">Personalised plans</p>
                 </div>
               </div>
             </Reveal>
