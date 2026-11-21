@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/fraunces";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+  --color-ivory: #fbfaf7;
+  --color-cream: #f4f1ea;
+  --color-line: #e6e1d6;
+  --color-navy-950: #071426;
+  --color-navy-900: #0b1f3a;
+  --color-navy-800: #132c4f;
+  --color-navy-700: #1d3c66;
+  --color-teal-50: #eefaf8;
+  --color-teal-100: #d5f2ee;
+  --color-teal-200: #ace5dd;
+  --color-teal-400: #3fb5aa;
+  --color-teal-500: #16978d;
+  --color-teal-600: #0e7a73;
+  --color-teal-700: #0f615c;
+  --color-ink: #1c2534;
+  --color-muted: #5b6676;
+}
+
+@layer base {
+  body { @apply bg-cream text-ink font-sans antialiased; }
+  h1, h2, h3 { @apply text-navy-900; }
+  :focus-visible { outline: 2px solid var(--color-teal-500); outline-offset: 2px; border-radius: 6px; }
+  input[type="number"]::-webkit-inner-spin-button { opacity: .4; }
+}
+
+@layer components {
+  .card { @apply rounded-2xl border border-line bg-white shadow-[0_1px_2px_rgb(11_31_58/.04),0_8px_24px_-12px_rgb(11_31_58/.10)]; }
+  .input { @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-muted/60 focus:border-teal-400 focus:ring-4 focus:ring-teal-100 disabled:bg-cream; }
+  .label { @apply mb-1.5 block text-xs font-semibold tracking-wide text-navy-800 uppercase; }
+  .table { @apply w-full text-sm; }
+  .table th { @apply border-b border-line px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted uppercase; }
+  .table td { @apply border-b border-line/70 px-4 py-3 align-middle; }
+  .table tr.row-link { @apply cursor-pointer transition hover:bg-teal-50/50; }
+  .num { font-variant-numeric: tabular-nums; }
+}
+
+/* ---------- print ---------- */
+@media print {
+  @page { size: A4; margin: 0; }
+  body { background: white !important; }
+  .no-print { display: none !important; }
+  .print-area { box-shadow: none !important; border: none !important; margin: 0 !important; }
+  .receipt-print @page { size: 80mm auto; }
+}

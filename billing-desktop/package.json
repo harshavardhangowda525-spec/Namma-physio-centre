@@ -9,7 +9,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n server,ui \"npm:dev:server\" \"npm:dev:ui\"",
-    "dev:server": "tsx watch server/standalone.ts",
+    "dev:server": "NPB_DEV_UI_PORT=5173 tsx watch server/standalone.ts",
     "dev:ui": "vite",
     "build:ui": "vite build",
     "build:main": "node scripts/build-main.mjs",
