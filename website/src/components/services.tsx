@@ -152,7 +152,7 @@ export function ServiceModal({ service, onClose }: { service: Service | null; on
                       </div>
 
                       <p className="mt-6 text-xs leading-relaxed text-muted">
-                        Every patient is different. Outcomes and recovery times vary, and your physiotherapist will discuss what is realistic for you after an assessment. This information is general and is not a substitute for individual medical advice.
+                        Every patient is different. Outcomes and recovery times vary, and your physiotherapist will discuss what is realistic for you after an assessment. This information is general and is not a substitute for individual medical advice. Images are illustrative and do not show clinic staff or patients.
                       </p>
 
                       <div className="sticky bottom-0 -mx-6 mt-8 flex flex-col gap-3 border-t border-line bg-ivory/95 px-6 py-4 backdrop-blur sm:-mx-10 sm:flex-row sm:px-10">

@@ -37,7 +37,11 @@ export type Service = {
   goals: string[];
   expect: string[];
   icon: ServiceIcon;
-  /** Path under /public once a real photo is supplied. */
+  /**
+   * Path under /public. The current images are AI-generated illustrations
+   * (created in Figma) and are labelled "illustrative" on the site. Replace
+   * with authentic clinic photographs when available.
+   */
   image: string | null;
   verified: boolean;
   published: boolean;
@@ -68,7 +72,7 @@ export const services: Service[] = [
       "Time for your questions",
     ],
     icon: "stethoscope",
-    image: null,
+    image: "/images/services/physiotherapy-consultation.jpg",
     verified: true,
     published: true,
     featured: true,
@@ -90,7 +94,7 @@ export const services: Service[] = [
     goals: ["Improve knee strength and stability", "Restore range of motion", "Return to walking, stairs and daily tasks", "Plan a safe return to sport where relevant"],
     expect: ["Review of any scans or reports you bring", "Hands-on assessment", "A staged plan with clear milestones", "Exercises to practise at home"],
     icon: "activity",
-    image: null,
+    image: "/images/services/knee-injury-rehabilitation.jpg",
     verified: true,
     published: true,
     featured: true,
@@ -112,7 +116,7 @@ export const services: Service[] = [
     goals: ["Settle pain and swelling", "Restore knee movement", "Rebuild strength for daily life and activity"],
     expect: ["Questions about how the injury happened", "Gentle assessment of movement", "A plan matched to your recovery stage"],
     icon: "footprints",
-    image: null,
+    image: "/images/services/meniscus-injury-rehabilitation.jpg",
     verified: true,
     published: true,
     featured: true,
@@ -134,7 +138,7 @@ export const services: Service[] = [
     goals: ["Improve joint stability", "Restore strength and confidence", "Reduce the risk of repeat injury through better control"],
     expect: ["Assessment of stability and movement", "A clear explanation of the stages of recovery", "Regular progress reviews"],
     icon: "link",
-    image: null,
+    image: "/images/services/ligament-injury-rehabilitation.jpg",
     verified: true,
     published: true,
     featured: true,
@@ -156,7 +160,7 @@ export const services: Service[] = [
     goals: ["Restore safe, comfortable movement", "Regain strength and independence", "Support your return to everyday life"],
     expect: ["Please bring your discharge summary and surgeon's instructions", "A gentle, paced first session", "A home exercise plan"],
     icon: "scissors",
-    image: null,
+    image: "/images/services/post-surgical-rehabilitation.jpg",
     verified: true,
     published: true,
     featured: true,
@@ -178,7 +182,7 @@ export const services: Service[] = [
     goals: ["Improve knee bend and straightening", "Walk more confidently", "Return to daily routines"],
     expect: ["Sessions at the clinic or at home", "Guidance on managing swelling", "A clear home programme"],
     icon: "bone",
-    image: null,
+    image: "/images/services/knee-replacement-rehabilitation.jpg",
     verified: true,
     published: true,
     source: "Supplied service information",
@@ -202,7 +206,7 @@ export const services: Service[] = [
       "Visit coverage and charges confirmed by the clinic",
     ],
     icon: "home",
-    image: null,
+    image: "/images/services/home-visit-physiotherapy.jpg",
     verified: true,
     published: true,
     featured: true,
