@@ -10,7 +10,7 @@ import { clinic } from "@/content/clinic";
 
 export const metadata: Metadata = {
   title: "Our Services",
-  description: "Physiotherapy consultations, knee, meniscus, ligament and MPFL rehabilitation, post-surgical and knee replacement rehabilitation, and home-visit physiotherapy in JP Nagar, Bengaluru.",
+  description: "Physiotherapy for back and neck pain, shoulder pain, knee and sports injuries, joint pain, post-surgical and knee replacement rehabilitation, plus home-visit physiotherapy in JP Nagar, Bengaluru.",
   alternates: { canonical: "/services" },
 };
 

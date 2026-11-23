@@ -68,11 +68,12 @@ export const doctor = {
   qualifications: [] as string[],
   experience: null as string | null,
   registration: null as string | null,
-  /** Areas supported by supplied information (patient reviews). */
+  /** Areas supported by supplied information (patient reviews) and client confirmation (Nov 2026). */
   areasOfTreatment: [
+    "Back and neck pain",
+    "Shoulder pain",
     "Knee injury rehabilitation",
     "Meniscus tear rehabilitation",
-    "MPFL injury rehabilitation",
     "Post-surgical rehabilitation",
     "Knee replacement rehabilitation",
   ],

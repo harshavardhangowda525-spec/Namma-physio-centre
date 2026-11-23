@@ -23,7 +23,7 @@ export function ServiceCard({ service, index, onOpen }: { service: Service; inde
         aria-haspopup="dialog"
         className="group card relative flex h-full w-full flex-col overflow-hidden text-left transition-all duration-500 ease-[var(--ease-out-expo)] hover:-translate-y-1.5 hover:border-teal-200 hover:shadow-[var(--shadow-lift)]"
       >
-        <div className="relative aspect-[16/10] overflow-hidden">
+        <div className="relative aspect-[3/2] overflow-hidden">
           <div className="h-full w-full transition-transform duration-[1.2s] ease-[var(--ease-out-expo)] group-hover:scale-[1.06]">
             <Media src={service.image} alt={service.title} icon={Icon} variant={index} className="h-full w-full" sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw" />
           </div>
@@ -123,7 +123,7 @@ export function ServiceModal({ service, onClose }: { service: Service | null; on
                       animate={{ clipPath: "inset(0 0 0% 0)" }}
                       transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
                     >
-                      <Media src={service.image} alt={service.title} icon={Icon} variant={1} className="aspect-[16/8] w-full" priority sizes="(min-width: 896px) 896px, 100vw" />
+                      <Media src={service.image} alt={service.title} icon={Icon} variant={1} className="aspect-[3/2] w-full" priority sizes="(min-width: 896px) 896px, 100vw" />
                     </motion.div>
                     <div className="p-6 sm:p-10">
                       <div className="flex items-center gap-3">
