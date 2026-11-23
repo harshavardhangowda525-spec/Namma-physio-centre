@@ -1,6 +1,6 @@
 # Handoff: current state & next steps
 
-_Last updated: 2026-11-23 (client service changes shipped). Update this file whenever you commit (see `CLAUDE.md`, Rule 1)._
+_Last updated: 2026-11-23 (home visit image replaced again per client). Update this file whenever you commit (see `CLAUDE.md`, Rule 1)._
 
 ## Continuation prompt
 Paste this into a new session (Claude Code, Antigravity, etc.) with the GitHub repo attached:
@@ -35,6 +35,7 @@ to the same branch.
 
 ## Next steps
 - [x] Client-requested website changes: 4 services added, MPFL removed, 8 images regenerated/added, pop-up image uncropped. Deployed to production.
+- [x] Home Visit image replaced again (client found it irrelevant): now `home-visit-physiotherapy-v3.jpg`, a physiotherapist supporting an elderly patient's sit-to-stand from his own armchair at home. New filename avoids stale image caches; an alternative (walking-frame in home hallway) is in the Figma file. Deployed.
 - [ ] Ask the owner what "charts" change the client wanted (skipped for now at owner's request).
 - [ ] Confirm the billing app runs on the owner's Windows PC.
 - [ ] Owner to rotate the admin password (current one was shared in chat).

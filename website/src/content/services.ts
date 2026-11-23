@@ -348,7 +348,7 @@ export const services: Service[] = [
       "Visit coverage and charges confirmed by the clinic",
     ],
     icon: "home",
-    image: "/images/services/home-visit-physiotherapy.jpg",
+    image: "/images/services/home-visit-physiotherapy-v3.jpg",
     verified: true,
     published: true,
     featured: true,
