@@ -23,9 +23,15 @@ type Dash = {
 
 const SERIES = "#16978d"; // validated against the light surface (dataviz validator: all checks pass)
 
-function Stat({ label, value, sub, icon: Icon }: { label: string; value: string; sub?: string; icon: typeof Wallet }) {
+function Stat({ label, value, sub, icon: Icon, onClick }: { label: string; value: string; sub?: string; icon: typeof Wallet; onClick?: () => void }) {
   return (
-    <div className="card p-5">
+    <div
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
+      className={`card p-5 ${onClick ? "cursor-pointer transition hover:-translate-y-0.5 hover:border-teal-300" : ""}`}
+    >
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold tracking-wide text-muted uppercase">{label}</p>
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal-50 text-teal-600"><Icon className="h-4 w-4" /></span>
@@ -39,7 +45,7 @@ function Stat({ label, value, sub, icon: Icon }: { label: string; value: string;
 const monthLabel = (m: string) => new Date(m + "-01T00:00:00").toLocaleDateString("en-IN", { month: "short" });
 
 /** Single-series column chart of monthly collections with hover tooltip and table view. */
-function TrendChart({ data }: { data: NonNullable<Dash["trend"]> }) {
+function TrendChart({ data, monthCollected, monthBilled }: { data: NonNullable<Dash["trend"]>; monthCollected?: number; monthBilled?: number }) {
   const [hover, setHover] = useState<number | null>(null);
   const [asTable, setAsTable] = useState(false);
   const W = 640, H = 220, pad = { l: 56, r: 8, t: 12, b: 26 };
@@ -53,20 +59,24 @@ function TrendChart({ data }: { data: NonNullable<Dash["trend"]> }) {
 
   return (
     <div className="card p-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="font-semibold">Collections, last 12 months</h2>
-          <p className="text-xs text-muted">Payments received per month</p>
+          <h2 className="font-semibold">Revenue overview (last 12 months)</h2>
+          <p className="text-xs text-muted">
+            This month collected <span className="num font-semibold text-navy-900">{money(monthCollected)}</span> · Billed <span className="num">{money(monthBilled)}</span>
+          </p>
         </div>
         <button className="flex items-center gap-1.5 text-xs font-semibold text-teal-700" onClick={() => setAsTable((t) => !t)} aria-pressed={asTable}>
           {asTable ? <><BarChart3 className="h-3.5 w-3.5" /> Chart</> : <><Table2 className="h-3.5 w-3.5" /> Table</>}
         </button>
       </div>
       {asTable ? (
-        <table className="table mt-3">
-          <thead><tr><th>Month</th><th className="text-right">Collected</th><th className="text-right">Billed</th></tr></thead>
-          <tbody>{data.map((d) => <tr key={d.month}><td>{d.month}</td><td className="num text-right">{money(d.collected)}</td><td className="num text-right">{money(d.billed)}</td></tr>)}</tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="table mt-3">
+            <thead><tr><th>Month</th><th className="text-right">Collected</th><th className="text-right">Billed</th></tr></thead>
+            <tbody>{data.map((d) => <tr key={d.month}><td>{d.month}</td><td className="num text-right">{money(d.collected)}</td><td className="num text-right">{money(d.billed)}</td></tr>)}</tbody>
+          </table>
+        </div>
       ) : (
         <div className="relative mt-3">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Monthly collections bar chart">
@@ -161,69 +171,78 @@ export function DashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {data.financial ? (
               <>
-                <Stat label="Collected today" value={money(data.todayCollected)} sub={`Billed today ${money(data.todayBilled)}`} icon={IndianRupee} />
-                <Stat label="Collected this month" value={money(data.monthCollected)} sub={`Billed this month ${money(data.monthBilled)}`} icon={Wallet} />
-                <Stat label="Outstanding" value={money(data.outstanding?.s)} sub={`${data.outstanding?.c ?? 0} unpaid or part-paid invoices`} icon={AlertCircle} />
-                <Stat label="Patients" value={String(data.totalPatients)} sub={`${data.todayAppointments} appointments today`} icon={Users} />
+                <Stat label="Today's collections" value={money(data.todayCollected)} sub={`Billed today ${money(data.todayBilled)}`} icon={IndianRupee} onClick={() => nav("/reports")} />
+                <Stat label="Pending payments" value={money(data.outstanding?.s)} sub={`${data.outstanding?.c ?? 0} unpaid or part-paid invoices`} icon={AlertCircle} onClick={() => nav("/invoices?status=outstanding")} />
+                <Stat label="Today's appointments" value={String(data.todayAppointments)} sub="Clinic & home sessions scheduled" icon={CalendarDays} onClick={() => nav("/appointments")} />
+                <Stat label="Total patients" value={String(data.totalPatients)} sub="Active clinic records" icon={Users} onClick={() => nav("/patients")} />
               </>
             ) : (
               <>
-                <Stat label="Patients" value={String(data.totalPatients)} icon={Users} />
-                <Stat label="Appointments today" value={String(data.todayAppointments)} icon={CalendarDays} />
+                <Stat label="Today's appointments" value={String(data.todayAppointments)} icon={CalendarDays} onClick={() => nav("/appointments")} />
+                <Stat label="Total patients" value={String(data.totalPatients)} icon={Users} onClick={() => nav("/patients")} />
               </>
             )}
           </div>
 
           {data.financial && data.trend && data.methods && (
             <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-              <TrendChart data={data.trend} />
+              <TrendChart data={data.trend} monthCollected={data.monthCollected} monthBilled={data.monthBilled} />
               <Methods rows={data.methods} />
             </div>
           )}
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <div className="card">
+            <div className="card overflow-hidden">
               <div className="flex items-center justify-between px-5 pt-5"><h2 className="font-semibold">Recent invoices</h2><Link to="/invoices" className="text-xs font-semibold text-teal-700">View all</Link></div>
               {data.recentInvoices.length === 0 ? <Empty title="No invoices yet" /> : (
-                <table className="table mt-2"><tbody>
-                  {data.recentInvoices.map((i) => (
-                    <tr key={i.id} className="row-link" onClick={() => nav(`/invoices/${i.id}`)}>
-                      <td><p className="font-medium text-navy-900">{i.patient_name}</p><p className="text-xs text-muted">{i.invoice_no} · {fmtDate(i.invoice_date)}</p></td>
-                      <td className="num text-right">{money(i.total)}</td>
-                      <td className="text-right"><StatusBadge status={i.status} /></td>
-                    </tr>
-                  ))}
-                </tbody></table>
+                <div className="overflow-x-auto">
+                  <table className="table mt-2"><tbody>
+                    {data.recentInvoices.map((i) => (
+                      <tr key={i.id} className="row-link" onClick={() => nav(`/invoices/${i.id}`)}>
+                        <td><p className="font-medium text-navy-900">{i.patient_name}</p><p className="text-xs text-muted">{i.invoice_no} · {fmtDate(i.invoice_date)}</p></td>
+                        <td className="num text-right">{money(i.total)}</td>
+                        <td className="text-right"><StatusBadge status={i.status} /></td>
+                      </tr>
+                    ))}
+                  </tbody></table>
+                </div>
               )}
             </div>
-            <div className="card">
-              <div className="flex items-center justify-between px-5 pt-5"><h2 className="font-semibold">Upcoming appointments</h2><Link to="/appointments" className="text-xs font-semibold text-teal-700">View all</Link></div>
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-5"><h2 className="font-semibold">Today &amp; upcoming appointments</h2><Link to="/appointments" className="text-xs font-semibold text-teal-700">View all</Link></div>
               {data.upcomingAppointments.length === 0 ? <Empty title="No upcoming appointments" /> : (
-                <table className="table mt-2"><tbody>
-                  {data.upcomingAppointments.map((a) => (
-                    <tr key={a.id} className="row-link" onClick={() => nav(`/patients/${a.patient_id}`)}>
-                      <td><p className="font-medium text-navy-900">{a.patient_name}</p><p className="text-xs text-muted capitalize">{a.visit_type} visit{a.physiotherapist ? ` · ${a.physiotherapist}` : ""}</p></td>
-                      <td className="num text-right text-sm">{fmtDate(a.date)}<br /><span className="text-muted">{a.time}</span></td>
-                      <td className="text-right"><StatusBadge status={a.status} /></td>
-                    </tr>
-                  ))}
-                </tbody></table>
+                <div className="overflow-x-auto">
+                  <table className="table mt-2"><tbody>
+                    {data.upcomingAppointments.map((a) => (
+                      <tr key={a.id} className="row-link" onClick={() => nav(`/patients/${a.patient_id}`)}>
+                        <td><p className="font-medium text-navy-900">{a.patient_name}</p><p className="text-xs text-muted capitalize">{a.visit_type} visit{a.physiotherapist ? ` · ${a.physiotherapist}` : ""}</p></td>
+                        <td className="num text-right text-sm">{fmtDate(a.date)}<br /><span className="text-muted">{a.time}</span></td>
+                        <td className="text-right"><StatusBadge status={a.status} /></td>
+                      </tr>
+                    ))}
+                  </tbody></table>
+                </div>
               )}
             </div>
           </div>
 
           {data.financial && data.recentPayments && (
-            <div className="card">
-              <h2 className="px-5 pt-5 font-semibold">Recent transactions</h2>
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-5">
+                <h2 className="font-semibold">Recent transactions</h2>
+                <Link to="/reports?tab=payments" className="text-xs font-semibold text-teal-700">Payment history</Link>
+              </div>
               {data.recentPayments.length === 0 ? <Empty title="No payments recorded yet" /> : (
-                <table className="table mt-2">
-                  <thead><tr><th>Receipt</th><th>Patient</th><th>Method</th><th>Date</th><th className="text-right">Amount</th></tr></thead>
-                  <tbody>{data.recentPayments.map((p) => (
-                    <tr key={p.id} className="row-link" onClick={() => nav(`/receipts/${p.id}`)}>
-                      <td className="font-medium">{p.receipt_no}</td><td>{p.patient_name}</td><td>{p.method}</td><td>{fmtDate(p.paid_on)}</td><td className="num text-right font-semibold">{money(p.amount)}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="table mt-2">
+                    <thead><tr><th>Receipt</th><th>Patient</th><th>Method</th><th>Date</th><th className="text-right">Amount</th></tr></thead>
+                    <tbody>{data.recentPayments.map((p) => (
+                      <tr key={p.id} className="row-link" onClick={() => nav(`/receipts/${p.id}`)}>
+                        <td className="font-medium">{p.receipt_no}</td><td>{p.patient_name}</td><td>{p.method}</td><td>{fmtDate(p.paid_on)}</td><td className="num text-right font-semibold">{money(p.amount)}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

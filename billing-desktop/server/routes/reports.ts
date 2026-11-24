@@ -151,6 +151,22 @@ export function reportRoutes(ctx: Ctx) {
     res.json({ from, to, rows, total: rows.reduce((s, r) => s + r.total, 0) });
   });
 
+  r.get("/reports/payments", (req, res) => {
+    const { from, to } = range(req.query);
+    const rows = ctx.db
+      .prepare(
+        `SELECT pay.id, pay.receipt_no, pay.paid_on, pay.amount, pay.method, pay.reference,
+                i.id AS invoice_id, i.invoice_no, p.id AS patient_id, p.name AS patient_name, p.patient_code
+         FROM payments pay
+         JOIN invoices i ON i.id = pay.invoice_id
+         JOIN patients p ON p.id = i.patient_id
+         WHERE pay.paid_on BETWEEN ? AND ?
+         ORDER BY pay.paid_on DESC, pay.id DESC LIMIT 1000`,
+      )
+      .all(from, to) as { amount: number }[];
+    res.json({ from, to, rows, count: rows.length, total: rows.reduce((s, r) => s + r.amount, 0) });
+  });
+
   r.get("/reports/patients", (req, res) => {
     const { from, to } = range(req.query);
     const rows = ctx.db

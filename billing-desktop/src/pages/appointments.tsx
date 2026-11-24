@@ -102,26 +102,28 @@ export function AppointmentsPage() {
           const list = data?.filter((a) => a.date === d) ?? [];
           if (!list.length) return null;
           return (
-            <div key={d} className="card">
+            <div key={d} className="card overflow-hidden">
               <h2 className="border-b border-line px-5 py-3 text-sm font-semibold">{new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</h2>
-              <table className="table"><tbody>
-                {list.map((a) => (
-                  <tr key={a.id}>
-                    <td className="w-20 font-semibold text-navy-900">{a.time}</td>
-                    <td><Link to={`/patients/${a.patient_id}`} className="font-medium text-navy-900 hover:underline">{a.patient_name}</Link><p className="text-xs text-muted">{a.patient_phone}</p></td>
-                    <td className="capitalize">{a.visit_type}</td>
-                    <td>{a.physiotherapist ?? "—"}</td>
-                    <td><StatusBadge status={a.status} /></td>
-                    <td className="text-right whitespace-nowrap">
-                      {can("appointments.write") && <>
-                        {a.status === "confirmed" && <Button size="sm" variant="ghost" onClick={() => quickStatus(a, "completed")}>Complete</Button>}
-                        {a.status === "requested" && <Button size="sm" variant="ghost" onClick={() => quickStatus(a, "confirmed")}>Confirm</Button>}
-                        <Button size="sm" variant="ghost" onClick={() => setEditing(a)}>Edit</Button>
-                      </>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody></table>
+              <div className="overflow-x-auto">
+                <table className="table"><tbody>
+                  {list.map((a) => (
+                    <tr key={a.id}>
+                      <td className="w-20 font-semibold text-navy-900">{a.time}</td>
+                      <td><Link to={`/patients/${a.patient_id}`} className="font-medium text-navy-900 hover:underline">{a.patient_name}</Link><p className="text-xs text-muted">{a.patient_phone}</p></td>
+                      <td className="capitalize">{a.visit_type}</td>
+                      <td>{a.physiotherapist ?? "—"}</td>
+                      <td><StatusBadge status={a.status} /></td>
+                      <td className="text-right whitespace-nowrap">
+                        {can("appointments.write") && <>
+                          {a.status === "confirmed" && <Button size="sm" variant="ghost" onClick={() => quickStatus(a, "completed")}>Complete</Button>}
+                          {a.status === "requested" && <Button size="sm" variant="ghost" onClick={() => quickStatus(a, "confirmed")}>Confirm</Button>}
+                          <Button size="sm" variant="ghost" onClick={() => setEditing(a)}>Edit</Button>
+                        </>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody></table>
+              </div>
             </div>
           );
         })}

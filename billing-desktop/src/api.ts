@@ -13,7 +13,21 @@ export const onUnauthorised = (l: Listener) => {
   };
 };
 
+export const IS_DEMO = import.meta.env.VITE_DEMO_MODE === "true";
+
 export async function api<T = unknown>(method: string, url: string, body?: unknown): Promise<T> {
+  if (IS_DEMO) {
+    const { demoApi, DemoApiError } = await import("./demo-backend");
+    try {
+      return await demoApi<T>(method, url, body);
+    } catch (e) {
+      if (e instanceof DemoApiError) {
+        if (e.status === 401 && !url.startsWith("/auth")) unauthListeners.forEach((l) => l());
+        throw new ApiError(e.status, e.message);
+      }
+      throw e;
+    }
+  }
   const res = await fetch("/api" + url, {
     method,
     credentials: "same-origin",

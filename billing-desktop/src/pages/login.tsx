@@ -1,7 +1,7 @@
-import { KeyRound, ShieldCheck } from "lucide-react";
+import { KeyRound, ShieldCheck, Sparkles } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { SessionUser } from "../../shared/types";
-import { post } from "../api";
+import { IS_DEMO, post } from "../api";
 import { useAuth } from "../auth";
 import { Button, ErrorNote, Field, Logo } from "../ui";
 
@@ -47,10 +47,39 @@ export function LoginPage() {
       setBusy(false);
     }
   }
+  async function quickDemo(username: string) {
+    setBusy(true);
+    try {
+      setUser((await post<{ user: SessionUser }>("/auth/login", { username, password: "demo" })).user);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <Shell title="Welcome back" subtitle={`Sign in to ${clinicName} billing.`}>
+      {IS_DEMO && (
+        <div className="mb-6 rounded-2xl border border-teal-200 bg-teal-50/80 p-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-teal-800 uppercase">
+            <Sparkles className="h-3.5 w-3.5" /> Instant Demo Access
+          </p>
+          <p className="mt-1 text-xs text-muted">Click a role below to explore the billing preview with fictional sample data:</p>
+          <div className="mt-3 grid gap-2">
+            <Button type="button" size="sm" loading={busy} onClick={() => quickDemo("dr.sunil")} className="w-full">
+              Enter as Dr. Sunil Kumar (Admin)
+            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" size="sm" variant="secondary" loading={busy} onClick={() => quickDemo("dr.kavitha")}>
+                Physiotherapist
+              </Button>
+              <Button type="button" size="sm" variant="secondary" loading={busy} onClick={() => quickDemo("reception")}>
+                Reception
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Username"><input className="input" autoComplete="username" value={u} onChange={(e) => setU(e.target.value)} required autoFocus /></Field>
+        <Field label="Username"><input className="input" autoComplete="username" value={u} onChange={(e) => setU(e.target.value)} required autoFocus={!IS_DEMO} /></Field>
         <Field label="Password"><input className="input" type="password" autoComplete="current-password" value={p} onChange={(e) => setP(e.target.value)} required /></Field>
         <ErrorNote error={err} />
         <Button type="submit" loading={busy} className="w-full"><KeyRound className="h-4 w-4" /> Sign in</Button>

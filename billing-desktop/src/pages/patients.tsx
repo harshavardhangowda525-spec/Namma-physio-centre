@@ -81,7 +81,7 @@ export function PatientsPage() {
   return (
     <div>
       <PageTitle title="Patients" subtitle={data ? `${data.total} patient${data.total === 1 ? "" : "s"}` : " "} actions={can("patients.write") && <Button onClick={() => setParams({ new: "1" })}><UserPlus className="h-4 w-4" /> New patient</Button>} />
-      <div className="card">
+      <div className="card overflow-hidden">
         <div className="border-b border-line p-4">
           <label className="relative block">
             <span className="sr-only">Search patients</span>
@@ -92,20 +92,22 @@ export function PatientsPage() {
         {data && data.items.length === 0 ? (
           <Empty icon={<Users className="h-5 w-5" />} title={debounced ? "No patients match your search" : "No patients yet"}>{!debounced && "Create your first patient to start billing."}</Empty>
         ) : (
-          <table className="table">
-            <thead><tr><th>Patient</th><th>ID</th><th>Phone</th><th>Last invoice</th><th className="text-right">Outstanding</th></tr></thead>
-            <tbody className={loading ? "opacity-60" : ""}>
-              {data?.items.map((p) => (
-                <tr key={p.id} className="row-link" onClick={() => nav(`/patients/${p.id}`)}>
-                  <td className="font-medium text-navy-900">{p.name}</td>
-                  <td className="text-muted">{p.patientCode}</td>
-                  <td>{p.phone ?? "—"}</td>
-                  <td>{fmtDate(p.lastInvoice)}</td>
-                  <td className={`num text-right ${p.outstanding ? "font-semibold text-rose-700" : "text-muted"}`}>{money(p.outstanding)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead><tr><th>Patient</th><th>ID</th><th>Phone</th><th>Last invoice</th><th className="text-right">Outstanding</th></tr></thead>
+              <tbody className={loading ? "opacity-60" : ""}>
+                {data?.items.map((p) => (
+                  <tr key={p.id} className="row-link" onClick={() => nav(`/patients/${p.id}`)}>
+                    <td className="font-medium text-navy-900">{p.name}</td>
+                    <td className="text-muted">{p.patientCode}</td>
+                    <td>{p.phone ?? "—"}</td>
+                    <td>{fmtDate(p.lastInvoice)}</td>
+                    <td className={`num text-right ${p.outstanding ? "font-semibold text-rose-700" : "text-muted"}`}>{money(p.outstanding)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         {data && data.total > 50 && (
           <div className="flex items-center justify-end gap-2 p-4 text-sm">
@@ -146,6 +148,8 @@ export function PatientDetailPage() {
   if (error) return <ErrorNote error={error} />;
   if (!data) return <p className="text-muted">Loading…</p>;
   const p = data.patient;
+  const completedSessions = data.appointments.filter((a) => a.status === "completed");
+  const upcomingSessions = data.appointments.filter((a) => a.status === "confirmed" || a.status === "requested");
 
   async function exportData() {
     const blob = new Blob([JSON.stringify(await get(`/patients/${p.id}/export`), null, 2)], { type: "application/json" });
@@ -175,13 +179,36 @@ export function PatientDetailPage() {
         subtitle={<>{p.patientCode} · Registered {fmtDate(p.createdAt)}{p.anonymisedAt && <span className="ml-2 rounded bg-slate-200 px-2 py-0.5 text-xs">Anonymised {fmtDate(p.anonymisedAt)}</span>}</>}
         actions={!p.anonymisedAt && <>
           {can("patients.write") && <Button variant="secondary" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /> Edit</Button>}
-          {can("appointments.write") && <Button variant="secondary" onClick={() => setBooking(true)}><CalendarPlus className="h-4 w-4" /> Appointment</Button>}
+          {can("appointments.write") && <Button variant="secondary" onClick={() => setBooking(true)}><CalendarPlus className="h-4 w-4" /> Book session</Button>}
           {can("invoices.write") && <Button onClick={() => nav(`/invoices/new?patient=${p.id}`)}><FilePlus2 className="h-4 w-4" /> New invoice</Button>}
         </>}
       />
 
       <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
         <div className="space-y-4">
+          <div className="card grid grid-cols-3 divide-x divide-line text-center">
+            <div className="p-4"><p className="text-xs text-muted">Billed</p><p className="num mt-1 font-semibold">{money(data.totals.billed)}</p></div>
+            <div className="p-4"><p className="text-xs text-muted">Paid</p><p className="num mt-1 font-semibold text-teal-700">{money(data.totals.paid)}</p></div>
+            <div className="p-4"><p className="text-xs text-muted">Due</p><p className={`num mt-1 font-semibold ${data.totals.outstanding ? "text-rose-700" : ""}`}>{money(data.totals.outstanding)}</p></div>
+          </div>
+          <div className="card p-4 text-sm">
+            <p className="text-xs font-semibold tracking-wide text-muted uppercase">Physiotherapy sessions</p>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-teal-50/80 p-3">
+                <p className="num font-display text-2xl text-teal-800">{completedSessions.length}</p>
+                <p className="text-xs text-muted">Completed</p>
+              </div>
+              <div className="rounded-xl bg-cream p-3">
+                <p className="num font-display text-2xl text-navy-900">{upcomingSessions.length}</p>
+                <p className="text-xs text-muted">Scheduled</p>
+              </div>
+            </div>
+            {completedSessions[0] && (
+              <p className="mt-2.5 text-xs text-muted">
+                Last session: <span className="font-medium text-navy-900">{fmtDate(completedSessions[0].date)}</span> ({completedSessions[0].visit_type})
+              </p>
+            )}
+          </div>
           <div className="card p-5 text-sm">
             <dl className="space-y-3">
               {[["Mobile", p.phone], ["Email", p.email], ["Gender", p.gender], ["Date of birth", fmtDate(p.dateOfBirth)], ["Address", p.address], ["Emergency contact", p.emergencyContact], ["Admin notes", p.adminNotes]].map(([k, v]) => (
@@ -189,11 +216,6 @@ export function PatientDetailPage() {
               ))}
               <div><dt className="text-xs font-semibold tracking-wide text-muted uppercase">Consent</dt><dd className="mt-0.5">{p.consentRecordedAt ? `Recorded ${fmtDate(p.consentRecordedAt)}` : <span className="text-amber-700">Not recorded</span>}</dd></div>
             </dl>
-          </div>
-          <div className="card grid grid-cols-3 divide-x divide-line text-center">
-            <div className="p-4"><p className="text-xs text-muted">Billed</p><p className="num mt-1 font-semibold">{money(data.totals.billed)}</p></div>
-            <div className="p-4"><p className="text-xs text-muted">Paid</p><p className="num mt-1 font-semibold text-teal-700">{money(data.totals.paid)}</p></div>
-            <div className="p-4"><p className="text-xs text-muted">Due</p><p className={`num mt-1 font-semibold ${data.totals.outstanding ? "text-rose-700" : ""}`}>{money(data.totals.outstanding)}</p></div>
           </div>
           {can("patients.delete") && (
             <div className="card space-y-2 p-5">
@@ -204,46 +226,52 @@ export function PatientDetailPage() {
           )}
         </div>
 
-        <div className="card">
-          <div className="flex gap-1 border-b border-line p-2" role="tablist">
+        <div className="card overflow-hidden">
+          <div className="flex flex-wrap gap-1 border-b border-line p-2" role="tablist">
             {(["billing", "appointments", ...(can("clinical.read") ? ["clinical"] : [])] as const).map((t) => (
               <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t as typeof tab)}
                 className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize ${tab === t ? "bg-teal-50 text-teal-800" : "text-muted hover:text-navy-900"}`}>
-                {t === "clinical" ? <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Clinical notes</span> : t === "billing" ? "Billing history" : "Appointments"}
+                {t === "clinical" ? <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Treatment &amp; clinical notes</span> : t === "billing" ? "Billing history" : "Sessions & appointments"}
               </button>
             ))}
           </div>
           {tab === "billing" && (
             <div>
               {data.invoices.length === 0 ? <Empty title="No invoices yet" /> : (
-                <table className="table">
-                  <thead><tr><th>Invoice</th><th>Date</th><th className="text-right">Total</th><th className="text-right">Paid</th><th>Status</th></tr></thead>
-                  <tbody>{data.invoices.map((i) => (
-                    <tr key={i.id} className="row-link" onClick={() => nav(`/invoices/${i.id}`)}>
-                      <td className="font-medium">{i.invoice_no}</td><td>{fmtDate(i.invoice_date)}</td><td className="num text-right">{money(i.total)}</td><td className="num text-right">{money(i.paid)}</td><td><StatusBadge status={i.status} /></td>
-                    </tr>
-                  ))}</tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="table">
+                    <thead><tr><th>Invoice</th><th>Date</th><th className="text-right">Total</th><th className="text-right">Paid</th><th>Status</th></tr></thead>
+                    <tbody>{data.invoices.map((i) => (
+                      <tr key={i.id} className="row-link" onClick={() => nav(`/invoices/${i.id}`)}>
+                        <td className="font-medium">{i.invoice_no}</td><td>{fmtDate(i.invoice_date)}</td><td className="num text-right">{money(i.total)}</td><td className="num text-right">{money(i.paid)}</td><td><StatusBadge status={i.status} /></td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
               )}
               {data.payments.length > 0 && (
                 <>
                   <h3 className="px-4 pt-6 pb-2 text-sm font-semibold">Payments</h3>
-                  <table className="table"><tbody>{data.payments.map((pay) => (
-                    <tr key={pay.id} className="row-link" onClick={() => nav(`/receipts/${pay.id}`)}>
-                      <td className="font-medium">{pay.receipt_no}</td><td className="text-muted">for {pay.invoice_no}</td><td>{pay.method}</td><td>{fmtDate(pay.paid_on)}</td><td className="num text-right font-semibold">{money(pay.amount)}</td>
-                    </tr>
-                  ))}</tbody></table>
+                  <div className="overflow-x-auto">
+                    <table className="table"><tbody>{data.payments.map((pay) => (
+                      <tr key={pay.id} className="row-link" onClick={() => nav(`/receipts/${pay.id}`)}>
+                        <td className="font-medium">{pay.receipt_no}</td><td className="text-muted">for {pay.invoice_no}</td><td>{pay.method}</td><td>{fmtDate(pay.paid_on)}</td><td className="num text-right font-semibold">{money(pay.amount)}</td>
+                      </tr>
+                    ))}</tbody></table>
+                  </div>
                 </>
               )}
             </div>
           )}
-          {tab === "appointments" && (data.appointments.length === 0 ? <Empty title="No appointments recorded" /> : (
-            <table className="table">
-              <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Physiotherapist</th><th>Status</th></tr></thead>
-              <tbody>{data.appointments.map((a) => (
-                <tr key={a.id}><td>{fmtDate(a.date)}</td><td>{a.time}</td><td className="capitalize">{a.visit_type}</td><td>{a.physiotherapist ?? "—"}</td><td><StatusBadge status={a.status} /></td></tr>
-              ))}</tbody>
-            </table>
+          {tab === "appointments" && (data.appointments.length === 0 ? <Empty title="No sessions recorded" /> : (
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Physiotherapist</th><th>Notes</th><th>Status</th></tr></thead>
+                <tbody>{data.appointments.map((a) => (
+                  <tr key={a.id}><td>{fmtDate(a.date)}</td><td>{a.time}</td><td className="capitalize">{a.visit_type}</td><td>{a.physiotherapist ?? "—"}</td><td className="text-muted">{a.notes ?? "—"}</td><td><StatusBadge status={a.status} /></td></tr>
+                ))}</tbody>
+              </table>
+            </div>
           ))}
           {tab === "clinical" && <ClinicalNotes patientId={p.id} readOnly={!!p.anonymisedAt || !can("clinical.write")} />}
         </div>

@@ -33,6 +33,8 @@ export type Service = {
   short: string;
   description: string;
   conditions: string[];
+  /** Subset of conditions shown as proposed scope awaiting final clinic sign-off. */
+  proposedConditions?: string[];
   approach: string[];
   goals: string[];
   expect: string[];
@@ -157,8 +159,27 @@ export const services: Service[] = [
     title: "Knee Injury Rehabilitation",
     short: "Structured, progressive rehabilitation to help you regain strength, stability and confidence in your knee.",
     description:
-      "Knee injuries can affect walking, stairs, sport and sleep. Rehabilitation is planned around the type of injury and your goals, progressing step by step from settling symptoms to rebuilding strength, control and confidence.",
-    conditions: ["Ligament sprains", "Meniscus injuries", "Kneecap (patellofemoral) problems", "Knee pain after activity"],
+      "Knee injuries, joint stiffness and arthritis-related knee conditions can affect walking, stairs, sport and sleep. Rehabilitation is planned around your condition and goals, progressing step by step from settling pain and stiffness to rebuilding strength, control and confidence.",
+    conditions: [
+      "Ligament sprains",
+      "Meniscus injuries",
+      "Kneecap (patellofemoral) problems",
+      "Knee pain after activity",
+      "Knee Osteoarthritis",
+      "Rheumatoid Arthritis affecting the knee",
+      "Degenerative Knee Joint Conditions",
+      "Arthritis-related Knee Pain",
+      "Knee Joint Stiffness",
+      "Arthritis-related Mobility Limitations",
+    ],
+    proposedConditions: [
+      "Knee Osteoarthritis",
+      "Rheumatoid Arthritis affecting the knee",
+      "Degenerative Knee Joint Conditions",
+      "Arthritis-related Knee Pain",
+      "Knee Joint Stiffness",
+      "Arthritis-related Mobility Limitations",
+    ],
     approach: [
       "Assessment of movement, swelling, strength and stability",
       "Progressive strengthening of the knee, hip and core",
@@ -172,7 +193,7 @@ export const services: Service[] = [
     verified: true,
     published: true,
     featured: true,
-    source: "Patient reviews (knee rehabilitation)",
+    source: "Patient reviews (knee rehabilitation); arthritis-related knee conditions proposed for clinic confirmation (Nov 2026)",
   },
   {
     slug: "meniscus-injury-rehabilitation",
@@ -254,10 +275,28 @@ export const services: Service[] = [
   {
     slug: "post-surgical-rehabilitation",
     title: "Post-Surgical Rehabilitation",
-    short: "Supportive rehabilitation after orthopaedic surgery, aligned with your surgeon's guidance.",
+    short: "Personalised rehabilitation following orthopaedic surgeries, joint replacements, fractures and traumatic injuries.",
     description:
-      "The weeks after surgery are important for recovery. Post-surgical physiotherapy aims to help you regain movement, strength and independence safely, following any precautions or protocols set by your surgical team.",
-    conditions: ["Recovery after knee surgery", "Recovery after ligament or meniscus surgery", "Stiffness and weakness after surgery"],
+      "Personalised rehabilitation following orthopaedic surgeries, joint replacements, fractures, and traumatic injuries, focused on restoring mobility, improving strength, managing pain, and supporting functional independence.",
+    conditions: [
+      "Post-Total Joint Replacement (TJR) Rehabilitation",
+      "Post-Total Knee Replacement (TKR) Rehabilitation",
+      "Post-Total Hip Replacement (THR) Rehabilitation",
+      "Post-Fracture Rehabilitation",
+      "Rehabilitation following fracture fixation surgery",
+      "Post-Trauma Rehabilitation",
+      "Post-Orthopaedic Surgery Rehabilitation",
+      "Post-ACL Reconstruction Rehabilitation",
+      "Post-Ligament Repair Rehabilitation",
+      "Post-Arthroscopic Surgery Rehabilitation",
+      "Post-operative stiffness and mobility limitations",
+    ],
+    proposedConditions: [
+      "Post-Orthopaedic Surgery Rehabilitation",
+      "Post-ACL Reconstruction Rehabilitation",
+      "Post-Ligament Repair Rehabilitation",
+      "Post-Arthroscopic Surgery Rehabilitation",
+    ],
     approach: [
       "Review of your surgical notes and precautions",
       "Swelling and pain management strategies",
@@ -271,7 +310,7 @@ export const services: Service[] = [
     verified: true,
     published: true,
     featured: true,
-    source: "Supplied service information",
+    source: "Supplied service information + client request for joint replacement, fracture and trauma rehab (Nov 2026); additional post-op conditions proposed for confirmation",
   },
   {
     slug: "knee-replacement-rehabilitation",
