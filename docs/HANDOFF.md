@@ -40,7 +40,8 @@ to the same branch.
 - [x] Post-Surgical Rehabilitation expanded (TJR/TKR/THR, fracture, fracture fixation, trauma, stiffness) and Knee Injury expanded with 6 arthritis conditions. Proposed items flagged via `proposedConditions` and tracked in the confirmation checklist.
 - [x] Billing demo published on GitHub Pages.
 - [ ] Get clinic confirmation for proposed Post-Surgical (orthopaedic, ACL, ligament, arthroscopic) and knee arthritis conditions.
-- [ ] Insurance section (website + billing fields): waiting for the client's insurance PDF. Do not implement before reading it.
+- [x] Insurance document received (`Namma_Physio_Invoice_-_Apoorva.docx`, a sample "Detailed Physiotherapy Bill" used for insurance reimbursement). Implemented in the billing app: patient profile → "Detailed bill (insurance)", pre-filled from completed sessions, editable, downloads a PDF in the clinic's format (patient, age/gender, referred by, treatment start/end, bill no/date, session-wise date/day/particulars/amount, total sessions, amount in words, signatory). Not stored in the DB.
+- [ ] Website insurance section: the document has no reimbursement procedure, insurer list or FAQ content, so nothing was published. Needs clinic-confirmed copy first (no cashless or insurer claims).
 - [ ] Ask the owner what "charts" change the client wanted (skipped for now at owner's request).
 - [ ] Confirm the billing app runs on the owner's Windows PC.
 - [ ] Owner to rotate the admin password (current one was shared in chat).

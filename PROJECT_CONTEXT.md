@@ -12,13 +12,14 @@ _Recovery snapshot, 2026-11-24. No secrets in this file. For the full current st
 - Knee Injury Rehabilitation: kept the 4 approved conditions and added 6 arthritis conditions (proposed, pending confirmation).
 - Service modal shows long condition lists in 2 columns, with a footnote when proposed items exist.
 - Billing: jsPDF invoice/receipt/report downloads, payment history report, session tracker, mobile layout, demo mode with role switcher and reset, plus demo tests.
+- Insurance-reimbursement "Detailed Physiotherapy Bill" PDF (session-wise), matching the client's sample document; generated from the patient profile.
 
 ## Decisions
 - Proposed medical content is shown but flagged and tracked in `docs/CLINIC-CONFIRMATION-CHECKLIST.md` until the clinic confirms it.
 - The demo build uses HashRouter and `base: "./"`, so it works under the GitHub Pages subpath. It is marked `noindex`.
 
 ## Pending
-- Insurance PDF from the client (Section 4). Nothing insurance-related is implemented yet, on purpose.
+- Website insurance section: needs clinic-confirmed copy. The client's document was only a bill format, which is now implemented in billing as the "Detailed bill (insurance)" PDF.
 - Clinic confirmation of the proposed conditions.
 - Owner's Windows install of the billing app; the "charts" change request.
 

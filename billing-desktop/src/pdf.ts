@@ -608,3 +608,139 @@ export function downloadReportPdf(opts: {
 
   doc.save(opts.fileName.endsWith(".pdf") ? opts.fileName : `${opts.fileName}.pdf`);
 }
+
+/* ------------------------------------------------------------------ */
+/* Detailed Physiotherapy Bill (session-wise statement for insurance   */
+/* reimbursement), following the clinic's own bill format.             */
+/* ------------------------------------------------------------------ */
+
+export type DetailedBillData = {
+  billNo: string;
+  billDate: string; // ISO yyyy-mm-dd
+  patientName: string;
+  ageGender: string;
+  referredBy: string;
+  sessions: { date: string; particulars: string; amount: number }[]; // amount in paise
+};
+
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+function dayName(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  return isNaN(+d) ? "-" : DAYS[d.getDay()];
+}
+
+export function downloadDetailedBillPdf(b: DetailedBillData, s: Settings, fileName: string) {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageH = doc.internal.pageSize.getHeight();
+  const sessions = [...b.sessions].sort((x, y) => x.date.localeCompare(y.date));
+  const total = sessions.reduce((a, r) => a + r.amount, 0);
+
+  const headerBottom = drawBrandHeader(doc, s, 16, 16);
+  let y = Math.max(headerBottom + 5, 42);
+  doc.setDrawColor(...NAVY);
+  doc.setLineWidth(0.6);
+  doc.line(16, y, 194, y);
+
+  y += 9;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(...NAVY);
+  doc.text("DETAILED PHYSIOTHERAPY BILL", 105, y, { align: "center" });
+
+  // Patient / bill information grid
+  y += 6;
+  const info: [string, string][] = [
+    ["Name of the patient", b.patientName],
+    ["Patient Age and Gender", b.ageGender || "-"],
+    ["Referred by", b.referredBy || "-"],
+    ["Treatment Start Date", sessions[0] ? fmtPdfDate(sessions[0].date) : "-"],
+    ["Treatment End Date", sessions.length ? fmtPdfDate(sessions[sessions.length - 1].date) : "-"],
+    ["Bill No.", b.billNo],
+    ["Bill Date", fmtPdfDate(b.billDate)],
+  ];
+  const rowH = 7;
+  doc.setLineWidth(0.25);
+  doc.setDrawColor(...LINE);
+  info.forEach(([k, v], i) => {
+    const ry = y + i * rowH;
+    if (i % 2 === 0) {
+      doc.setFillColor(...TEAL_SOFT);
+      doc.rect(16, ry, 178, rowH, "F");
+    }
+    doc.rect(16, ry, 178, rowH, "S");
+    doc.line(76, ry, 76, ry + rowH);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...NAVY);
+    doc.text(k, 19, ry + 4.8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...INK);
+    doc.text(cleanText(v), 79, ry + 4.8);
+  });
+  y += info.length * rowH + 7;
+
+  // Session table
+  const cols = { sl: 16, date: 32, day: 62, part: 92, amt: 194 };
+  const drawHead = () => {
+    doc.setFillColor(...NAVY);
+    doc.rect(16, y, 178, 8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text("Sl. No", cols.sl + 2.5, y + 5.3);
+    doc.text("Date", cols.date + 2, y + 5.3);
+    doc.text("Day", cols.day + 2, y + 5.3);
+    doc.text("Particulars", cols.part + 2, y + 5.3);
+    doc.text("Amount (Rs.)", cols.amt - 2.5, y + 5.3, { align: "right" });
+    y += 8;
+  };
+  drawHead();
+  const lineH = 6.4;
+  sessions.forEach((r, i) => {
+    if (y + lineH > pageH - 60) {
+      doc.addPage();
+      y = 20;
+      drawHead();
+    }
+    if (i % 2 === 1) {
+      doc.setFillColor(250, 248, 243);
+      doc.rect(16, y, 178, lineH, "F");
+    }
+    doc.setDrawColor(...LINE);
+    doc.line(16, y + lineH, 194, y + lineH);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.8);
+    doc.setTextColor(...INK);
+    doc.text(String(i + 1), cols.sl + 2.5, y + 4.4);
+    doc.text(fmtPdfDate(r.date), cols.date + 2, y + 4.4);
+    doc.text(dayName(r.date), cols.day + 2, y + 4.4);
+    doc.text(cleanText(r.particulars), cols.part + 2, y + 4.4);
+    doc.text(pdfMoney(r.amount, false), cols.amt - 2.5, y + 4.4, { align: "right" });
+    y += lineH;
+  });
+
+  // Total row
+  doc.setFillColor(...TEAL_SOFT);
+  doc.rect(16, y, 178, 8.5, "F");
+  doc.setDrawColor(...TEAL);
+  doc.setLineWidth(0.5);
+  doc.line(16, y, 194, y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(...NAVY);
+  doc.text(`Total ${sessions.length} session${sessions.length === 1 ? "" : "s"}`, cols.sl + 2.5, y + 5.6);
+  doc.text(pdfMoney(total), cols.amt - 2.5, y + 5.6, { align: "right" });
+  y += 13;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...NAVY);
+  doc.text("Amount in Words:", 16, y);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...INK);
+  doc.text(cleanText(amountInWords(total)), 46, y, { maxWidth: 148 });
+  y += 6;
+
+  drawSignatureAndFooter(doc, s, y);
+  doc.save(fileName);
+}

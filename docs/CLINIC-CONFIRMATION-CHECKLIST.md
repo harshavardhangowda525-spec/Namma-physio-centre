@@ -32,7 +32,8 @@ Orthopaedic Physiotherapy · Neurological Physiotherapy · Geriatric Physiothera
 - [ ] Confirm which of the remaining 7 proposed services the clinic offers, approve the copy, then set both flags to `true`.
 - [ ] **Post-Surgical Rehabilitation — confirm proposed additional conditions** (joint replacement TJR/TKR/THR, fracture, fracture fixation, trauma, and post-operative stiffness were specifically requested; confirm whether to retain *Post-Orthopaedic Surgery Rehabilitation*, *Post-ACL Reconstruction Rehabilitation*, *Post-Ligament Repair Rehabilitation*, and *Post-Arthroscopic Surgery Rehabilitation*).
 - [ ] **Knee Injury Rehabilitation — confirm arthritis-related knee conditions** (*Knee Osteoarthritis*, *Rheumatoid Arthritis affecting the knee*, *Degenerative Knee Joint Conditions*, *Arthritis-related Knee Pain*, *Knee Joint Stiffness*, *Arthritis-related Mobility Limitations*) and whether the clinic would like the card title updated to *Knee Pain & Injury Rehabilitation*.
-- [ ] **Insurance & Reimbursement PDF** — supply the client's insurance PDF document before any insurance or reimbursement copy/fields are published on the website or enabled in the billing software.
+- [x] **Insurance document received**: a sample Detailed Physiotherapy Bill. Its format is now in the billing app. Confirm the default charge per session (Rs. 1,000 in the sample) and whether "Referred by" should be mandatory.
+- [ ] **Website insurance section**: confirm the reimbursement process the clinic supports, the documents provided (detailed bill, receipts, prescription/referral) and the FAQ answers before anything is published. No cashless or insurer-tie-up claims.
 - [ ] Home-visit coverage area (localities / PIN codes) and charges.
 
 ## Photography (illustrations currently labelled illustrative; real photos pending)
