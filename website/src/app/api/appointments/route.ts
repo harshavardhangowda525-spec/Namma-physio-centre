@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { bookingSchema } from "@/lib/booking-schema";
-import { insertRequest, StorageUnavailableError } from "@/lib/db";
+import { findRecentDuplicateRequest, insertRequest, StorageUnavailableError, toSyncedInquiry } from "@/lib/db";
+import { notifyBillingWebhook } from "@/lib/inquiry-sync";
 import { notifyClinic } from "@/lib/notify";
 import { makeReference } from "@/lib/reference";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
   if (d.company) return NextResponse.json({ reference: makeReference() }, { status: 201 }); // honeypot: pretend success
 
   try {
-    const saved = await insertRequest({
+    const candidate = {
       reference: makeReference(),
       visit_type: d.visitType,
       patient_name: d.patientName,
@@ -46,8 +47,14 @@ export async function POST(req: Request) {
       reason: d.reason ?? null,
       notes: d.notes ?? null,
       consent_at: new Date().toISOString(),
-    });
-    const notified = await notifyClinic(saved);
+    };
+    const duplicate = await findRecentDuplicateRequest(candidate);
+    if (duplicate) {
+      return NextResponse.json({ reference: duplicate.reference, status: duplicate.status }, { status: 201 });
+    }
+
+    const saved = await insertRequest(candidate);
+    const [notified] = await Promise.all([notifyClinic(saved), notifyBillingWebhook(toSyncedInquiry(saved))]);
     if (!notified.sent) console.warn(`[booking] ${saved.reference} saved; notification not sent: ${notified.reason}`);
     return NextResponse.json({ reference: saved.reference, status: saved.status }, { status: 201 });
   } catch (e) {

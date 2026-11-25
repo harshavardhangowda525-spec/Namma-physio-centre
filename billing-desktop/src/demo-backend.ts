@@ -1477,6 +1477,64 @@ export async function demoApi<T = unknown>(method: string, rawUrl: string, body?
     return { ok: true } as T;
   }
 
+  if (m === "GET" && path === "/inquiries") {
+    assertPerm(st, "inquiries.read");
+    return {
+      items: [],
+      total: 0,
+      sync: {
+        configured: true,
+        websiteUrl: "https://namma-physio-centre-psi.vercel.app",
+        state: "idle",
+        lastSyncAt: new Date().toISOString(),
+        lastAttemptAt: new Date().toISOString(),
+        lastError: null,
+        totalInquiries: 0,
+      },
+    } as T;
+  }
+  if (m === "GET" && path === "/inquiries/status") {
+    assertPerm(st, "inquiries.read");
+    return {
+      configured: true,
+      websiteUrl: "https://namma-physio-centre-psi.vercel.app",
+      state: "idle",
+      lastSyncAt: new Date().toISOString(),
+      lastAttemptAt: new Date().toISOString(),
+      lastError: null,
+      totalInquiries: 0,
+    } as T;
+  }
+  if (m === "POST" && (path === "/inquiries/sync" || path === "/inquiries/connect")) {
+    assertPerm(st, path === "/inquiries/connect" ? "settings.write" : "inquiries.read");
+    return {
+      added: 0,
+      status: {
+        configured: true,
+        websiteUrl: "https://namma-physio-centre-psi.vercel.app",
+        state: "idle",
+        lastSyncAt: new Date().toISOString(),
+        lastAttemptAt: new Date().toISOString(),
+        lastError: null,
+        totalInquiries: 0,
+      },
+    } as T;
+  }
+  if (m === "POST" && path === "/inquiries/disconnect") {
+    assertPerm(st, "settings.write");
+    return {
+      status: {
+        configured: false,
+        websiteUrl: "https://namma-physio-centre-psi.vercel.app",
+        state: "unconfigured",
+        lastSyncAt: null,
+        lastAttemptAt: null,
+        lastError: null,
+        totalInquiries: 0,
+      },
+    } as T;
+  }
+
   if (m === "GET" && path === "/audit") {
     assertPerm(st, "audit.read");
     const q = (query.get("q") ?? "").trim().toLowerCase();

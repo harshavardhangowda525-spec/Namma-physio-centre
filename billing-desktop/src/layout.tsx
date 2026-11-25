@@ -1,5 +1,5 @@
-import { BarChart3, CalendarDays, FileText, LayoutDashboard, LogOut, Menu, RotateCcw, Settings, Sparkles, Users, WifiOff, X } from "lucide-react";
-import { useState } from "react";
+import { BarChart3, CalendarDays, FileText, Inbox, LayoutDashboard, LogOut, Menu, RotateCcw, Settings, Sparkles, Users, WifiOff, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import type { Role, SessionUser } from "../shared/types";
 import { IS_DEMO, post } from "./api";
@@ -11,12 +11,23 @@ export function Layout() {
   const navTo = useNavigate();
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  const canReadInquiries = can("inquiries.read");
+
+  useEffect(() => {
+    if (IS_DEMO || !canReadInquiries) return;
+    const onOnline = () => {
+      void post("/inquiries/sync").catch(() => {});
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [canReadInquiries]);
 
   const nav = [
     { to: "/", label: "Dashboard", icon: LayoutDashboard, show: true },
     { to: "/patients", label: "Patients", icon: Users, show: can("patients.read") },
     { to: "/invoices", label: "Invoices", icon: FileText, show: can("invoices.read") },
     { to: "/appointments", label: "Appointments", icon: CalendarDays, show: can("appointments.read") },
+    { to: "/inquiries", label: "Appointment Inquiries", icon: Inbox, show: canReadInquiries },
     { to: "/reports", label: "Reports", icon: BarChart3, show: can("reports.read") },
     { to: "/settings", label: "Settings", icon: Settings, show: true },
   ];
@@ -52,7 +63,7 @@ export function Layout() {
             onClick={() => setOpen(false)}
             className={({ isActive }) => `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${isActive ? "bg-navy-900 text-white shadow-sm" : "text-navy-800 hover:bg-teal-50 hover:text-teal-700"}`}
           >
-            <n.icon className="h-[18px] w-[18px]" /> {n.label}
+            <n.icon className="h-[18px] w-[18px] shrink-0" /> {n.label}
           </NavLink>
         ))}
       </nav>
@@ -138,7 +149,7 @@ export function Layout() {
       )}
 
       <div className="flex min-w-0 flex-1">
-        <aside className="no-print sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-ivory px-4 py-6 lg:flex">
+        <aside className="no-print sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line bg-ivory px-4 py-6 lg:flex">
           {sidebarBody}
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">

@@ -157,6 +157,30 @@ const MIGRATIONS: string[] = [
     message TEXT
   );
   `,
+  `
+  CREATE TABLE appointment_inquiries (
+    id INTEGER PRIMARY KEY,
+    remote_id INTEGER,
+    reference TEXT NOT NULL UNIQUE,
+    visit_type TEXT NOT NULL CHECK (visit_type IN ('clinic', 'home')),
+    patient_name TEXT NOT NULL,
+    mobile TEXT NOT NULL,
+    email TEXT,
+    address TEXT,
+    locality TEXT,
+    pin_code TEXT,
+    preferred_date TEXT NOT NULL,
+    preferred_time TEXT NOT NULL,
+    reason TEXT,
+    notes TEXT,
+    consent_at TEXT NOT NULL,
+    submitted_at TEXT NOT NULL,
+    synced_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX appointment_inquiries_submitted_idx ON appointment_inquiries (submitted_at DESC, remote_id DESC, id DESC);
+  CREATE INDEX appointment_inquiries_remote_idx ON appointment_inquiries (remote_id);
+  CREATE INDEX appointment_inquiries_mobile_idx ON appointment_inquiries (mobile);
+  `,
 ];
 
 export const EXPECTED_TABLES = ["settings", "users", "patients", "invoices", "invoice_items", "payments", "appointments", "audit_log"];

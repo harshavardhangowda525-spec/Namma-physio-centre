@@ -11,6 +11,7 @@ import { InvoicesPage } from "./pages/invoices";
 import { InvoiceEditorPage } from "./pages/invoice-editor";
 import { InvoiceViewPage, ReceiptViewPage } from "./pages/invoice-view";
 import { AppointmentsPage } from "./pages/appointments";
+import { AppointmentInquiriesPage } from "./pages/inquiries";
 import { ReportsPage } from "./pages/reports";
 import { SettingsPage } from "./pages/settings";
 import { ToastProvider } from "./ui";
@@ -33,6 +34,7 @@ function Gate() {
         <Route path="invoices/:id" element={<InvoiceViewPage />} />
         <Route path="receipts/:id" element={<ReceiptViewPage />} />
         <Route path="appointments" element={<AppointmentsPage />} />
+        <Route path="inquiries" element={<AppointmentInquiriesPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

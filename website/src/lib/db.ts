@@ -167,6 +167,102 @@ export async function setToken(provider: string, ciphertext: string | null) {
   else mem().tokens.set(provider, ciphertext);
 }
 
+export type SyncedInquiry = Pick<
+  AppointmentRequest,
+  | "id"
+  | "reference"
+  | "visit_type"
+  | "patient_name"
+  | "mobile"
+  | "email"
+  | "address"
+  | "locality"
+  | "pin_code"
+  | "preferred_date"
+  | "preferred_time"
+  | "reason"
+  | "notes"
+  | "consent_at"
+  | "created_at"
+>;
+
+export function toSyncedInquiry(r: AppointmentRequest): SyncedInquiry {
+  return {
+    id: r.id,
+    reference: r.reference,
+    visit_type: r.visit_type,
+    patient_name: r.patient_name,
+    mobile: r.mobile,
+    email: r.email,
+    address: r.address,
+    locality: r.locality,
+    pin_code: r.pin_code,
+    preferred_date: r.preferred_date,
+    preferred_time: r.preferred_time,
+    reason: r.reason,
+    notes: r.notes,
+    consent_at: r.consent_at,
+    created_at: r.created_at,
+  };
+}
+
+/** Prevents duplicate entries if a patient double-submits the identical inquiry within 5 minutes. */
+export async function findRecentDuplicateRequest(r: NewRequest): Promise<AppointmentRequest | null> {
+  if (sql) {
+    const rows = await sql`
+      SELECT * FROM appointment_requests
+      WHERE mobile = ${r.mobile}
+        AND visit_type = ${r.visit_type}
+        AND preferred_date = ${r.preferred_date}
+        AND preferred_time = ${r.preferred_time}
+        AND LOWER(patient_name) = LOWER(${r.patient_name})
+        AND created_at >= now() - interval '5 minutes'
+      ORDER BY id DESC
+      LIMIT 1`;
+    return rows[0] ? normalise(rows[0]) : null;
+  }
+  const cutoff = Date.now() - 5 * 60_000;
+  return (
+    mem().requests.find(
+      (x) =>
+        x.mobile === r.mobile &&
+        x.visit_type === r.visit_type &&
+        x.preferred_date === r.preferred_date &&
+        x.preferred_time === r.preferred_time &&
+        x.patient_name.toLowerCase() === r.patient_name.toLowerCase() &&
+        new Date(x.created_at).getTime() >= cutoff,
+    ) ?? null
+  );
+}
+
+/** Returns inquiries in ascending ID order for cursor-based synchronization with the local billing app. */
+export async function listInquiriesForSync(afterId = 0, limit = 200): Promise<SyncedInquiry[]> {
+  const safeAfter = Math.max(0, Math.floor(afterId));
+  const safeLimit = Math.min(500, Math.max(1, Math.floor(limit)));
+  if (sql) {
+    const rows =
+      safeAfter === 0
+        ? await sql`SELECT * FROM appointment_requests ORDER BY id ASC LIMIT ${safeLimit}`
+        : await sql`
+            SELECT * FROM appointment_requests
+            WHERE id > ${safeAfter}
+               OR (id > ${Math.max(0, safeAfter - 50)} AND created_at >= now() - interval '2 minutes')
+            ORDER BY id ASC
+            LIMIT ${safeLimit}`;
+    return rows.map((r) => toSyncedInquiry(normalise(r)));
+  }
+  const cutoff = Date.now() - 2 * 60_000;
+  return mem()
+    .requests.filter(
+      (r) =>
+        r.id > safeAfter ||
+        (safeAfter > 0 && r.id > Math.max(0, safeAfter - 50) && new Date(r.created_at).getTime() >= cutoff),
+    )
+    .sort((a, b) => a.id - b.id)
+    .slice(0, safeLimit)
+    .map(toSyncedInquiry);
+}
+
 function toDateString(v: unknown): string {
   if (v instanceof Date) return v.toISOString().slice(0, 10);
   return String(v).slice(0, 10);
