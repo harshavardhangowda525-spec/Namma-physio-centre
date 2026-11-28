@@ -25,14 +25,18 @@ Nothing below is published as fact until the clinic confirms it. Each item says 
 - [ ] Exact map pin / Google Place ID (needed for live reviews).
 
 ## Services
-The website shows only the **7 services supported by supplied information**. The other 11 in the proposed catalogue are written but hidden (`verified: false, published: false` in `website/src/content/services.ts`):
+The website currently publishes **10 approved services** (`verified: true, published: true` in `website/src/content/services.ts`). Another 7 services in the proposed catalogue remain hidden (`verified: false, published: false`):
 
-Orthopaedic Physiotherapy · Sports Injury Rehabilitation · Back & Neck Pain · Shoulder Pain · Joint Pain Management · Neurological Physiotherapy · Geriatric Physiotherapy · Mobility & Balance Training · Posture & Ergonomic Guidance · Strengthening & Conditioning · Chronic Pain Rehabilitation
+Orthopaedic Physiotherapy · Neurological Physiotherapy · Geriatric Physiotherapy · Mobility & Balance Training · Posture & Ergonomic Guidance · Strengthening & Conditioning · Chronic Pain Rehabilitation
 
-- [ ] Confirm which of these the clinic offers, approve the copy, then set both flags to `true`.
+- [ ] Confirm which of the remaining 7 proposed services the clinic offers, approve the copy, then set both flags to `true`.
+- [ ] **Post-Surgical Rehabilitation — confirm proposed additional conditions** (joint replacement TJR/TKR/THR, fracture, fracture fixation, trauma, and post-operative stiffness were specifically requested; confirm whether to retain *Post-Orthopaedic Surgery Rehabilitation*, *Post-ACL Reconstruction Rehabilitation*, *Post-Ligament Repair Rehabilitation*, and *Post-Arthroscopic Surgery Rehabilitation*).
+- [ ] **Knee Injury Rehabilitation — confirm arthritis-related knee conditions** (*Knee Osteoarthritis*, *Rheumatoid Arthritis affecting the knee*, *Degenerative Knee Joint Conditions*, *Arthritis-related Knee Pain*, *Knee Joint Stiffness*, *Arthritis-related Mobility Limitations*) and whether the clinic would like the card title updated to *Knee Pain & Injury Rehabilitation*.
+- [x] **Insurance document received**: a sample Detailed Physiotherapy Bill. Its format is now in the billing app. Confirm the default charge per session (Rs. 1,000 in the sample) and whether "Referred by" should be mandatory.
+- [ ] **Website insurance section**: confirm the reimbursement process the clinic supports, the documents provided (detailed bill, receipts, prescription/referral) and the FAQ answers before anything is published. No cashless or insurer-tie-up claims.
 - [ ] Home-visit coverage area (localities / PIN codes) and charges.
 
-## Photography (all currently labelled placeholders)
+## Photography (illustrations currently labelled illustrative; real photos pending)
 - [ ] Hero treatment photograph
 - [ ] Portrait of Dr. Sunil Kumar (must be the real doctor; never a stock model)
 - [ ] Reception, treatment rooms, equipment, a rehabilitation session, doctor & team

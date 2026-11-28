@@ -5,6 +5,7 @@ import { amountInWords } from "../../shared/billing";
 import type { Settings } from "../../server/settings";
 import { del, get, post, saveAsPdf } from "../api";
 import { useAuth } from "../auth";
+import { downloadInvoicePdf, downloadReceiptPdf } from "../pdf";
 import { Button, ErrorNote, Field, Modal, MoneyInput, StatusBadge, fmtDate, money, todayLocal, useLoad, useToast } from "../ui";
 
 type Inv = {
@@ -82,6 +83,13 @@ export function InvoiceViewPage() {
   const balance = inv.total - inv.paid;
   const isVoid = inv.status === "void";
   const taxOnInvoice = inv.tax_total > 0;
+  const pdfName = `${inv.invoice_no.replace(/\//g, "-")} ${inv.patient_name}.pdf`;
+
+  function handlePdf() {
+    if (window.desktop) return void saveAsPdf(pdfName);
+    downloadInvoicePdf(data!, s!, pdfName);
+    toast("Invoice PDF downloaded");
+  }
 
   return (
     <div>
@@ -98,7 +106,7 @@ export function InvoiceViewPage() {
             ))}
           </div>
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print</Button>
-          <Button variant="secondary" onClick={() => saveAsPdf(`${inv.invoice_no.replace(/\//g, "-")} ${inv.patient_name}.pdf`)}><Download className="h-4 w-4" /> PDF</Button>
+          <Button variant="secondary" onClick={handlePdf}><Download className="h-4 w-4" /> Download PDF</Button>
           {!isVoid && balance > 0 && can("payments.write") && <Button onClick={() => setPaying(true)}><IndianRupee className="h-4 w-4" /> Record payment</Button>}
           {!isVoid && inv.paid === 0 && can("invoices.write") && <Button variant="secondary" onClick={() => nav(`/invoices/${inv.id}/edit`)}><Pencil className="h-4 w-4" /> Edit</Button>}
           {!isVoid && can("invoices.void") && <Button variant="ghost" className="!text-rose-700" onClick={() => setVoiding(true)}><Ban className="h-4 w-4" /> Void</Button>}
@@ -287,10 +295,12 @@ type Pay = { id: number; receipt_no: string; amount: number; method: string; ref
 
 export function ReceiptViewPage() {
   const { id } = useParams();
+  const toast = useToast();
   const { data: p, error } = useLoad(() => get<Pay>(`/payments/${id}`), [id]);
   const { data: s } = useLoad(() => get<Settings>("/settings"), []);
   if (error) return <ErrorNote error={error} />;
   if (!p || !s) return <p className="text-muted">Loading…</p>;
+  const pdfName = `Receipt ${p.receipt_no.replace(/\//g, "-")} ${p.patient_name}.pdf`;
   return (
     <div>
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -300,7 +310,11 @@ export function ReceiptViewPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print</Button>
-          <Button onClick={() => saveAsPdf(`Receipt ${p.receipt_no.replace(/\//g, "-")} ${p.patient_name}.pdf`)}><Download className="h-4 w-4" /> PDF</Button>
+          <Button onClick={() => {
+            if (window.desktop) return void saveAsPdf(pdfName);
+            downloadReceiptPdf(p, s, pdfName);
+            toast("Receipt PDF downloaded");
+          }}><Download className="h-4 w-4" /> Download PDF</Button>
         </div>
       </div>
       <div className="overflow-x-auto pb-6">

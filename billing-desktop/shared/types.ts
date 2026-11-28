@@ -12,6 +12,7 @@ export const PERMISSIONS = {
   "payments.write": ["admin", "reception"],
   "appointments.read": ["admin", "physiotherapist", "reception"],
   "appointments.write": ["admin", "physiotherapist", "reception"],
+  "inquiries.read": ["admin", "physiotherapist", "reception"],
   "reports.read": ["admin"],
   "dashboard.financial": ["admin"],
   "settings.write": ["admin"],
@@ -30,3 +31,35 @@ export type SessionUser = { id: number; username: string; displayName: string; r
 
 export type AppointmentStatus = "requested" | "confirmed" | "completed" | "cancelled" | "no_show";
 export const APPOINTMENT_STATUSES: AppointmentStatus[] = ["requested", "confirmed", "completed", "cancelled", "no_show"];
+
+export type AppointmentInquiry = {
+  id: number;
+  remoteId: number | null;
+  reference: string;
+  visitType: "clinic" | "home";
+  patientName: string;
+  mobile: string;
+  email: string | null;
+  address: string | null;
+  locality: string | null;
+  pinCode: string | null;
+  preferredDate: string;
+  preferredTime: string;
+  reason: string | null;
+  notes: string | null;
+  consentAt: string;
+  submittedAt: string;
+  syncedAt: string;
+};
+
+export type InquirySyncState = "unconfigured" | "idle" | "syncing" | "offline" | "auth_error" | "error";
+
+export type InquirySyncStatus = {
+  configured: boolean;
+  websiteUrl: string;
+  state: InquirySyncState;
+  lastSyncAt: string | null;
+  lastAttemptAt: string | null;
+  lastError: string | null;
+  totalInquiries: number;
+};

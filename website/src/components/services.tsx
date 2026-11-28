@@ -135,12 +135,32 @@ export function ServiceModal({ service, onClose }: { service: Service | null; on
                       <Dialog.Title className="mt-5 font-display text-3xl font-medium text-navy-900 sm:text-4xl">{service.title}</Dialog.Title>
                       <p className="lead mt-4">{service.description}</p>
 
-                      <div className="mt-8 grid gap-5 md:grid-cols-2">
-                        <InfoList title="Conditions commonly addressed" items={service.conditions} />
-                        <InfoList title="General treatment approach" items={service.approach} />
-                        <InfoList title="Potential rehabilitation goals" items={service.goals} />
-                        <InfoList title="What to expect at your consultation" items={service.expect} />
-                      </div>
+                      {service.conditions.length > 6 ? (
+                        <div className="mt-8 space-y-5">
+                          <InfoList
+                            title="Conditions commonly addressed"
+                            items={service.conditions}
+                            twoCol
+                            footnote={
+                              service.proposedConditions?.length
+                                ? "Includes proposed condition scope shown for review and subject to clinic confirmation."
+                                : undefined
+                            }
+                          />
+                          <div className="grid gap-5 md:grid-cols-3">
+                            <InfoList title="General treatment approach" items={service.approach} />
+                            <InfoList title="Potential rehabilitation goals" items={service.goals} />
+                            <InfoList title="What to expect at your consultation" items={service.expect} />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-8 grid gap-5 md:grid-cols-2">
+                          <InfoList title="Conditions commonly addressed" items={service.conditions} />
+                          <InfoList title="General treatment approach" items={service.approach} />
+                          <InfoList title="Potential rehabilitation goals" items={service.goals} />
+                          <InfoList title="What to expect at your consultation" items={service.expect} />
+                        </div>
+                      )}
 
                       <div className="mt-6 rounded-3xl bg-gradient-to-br from-teal-50 to-cyan-soft p-6 ring-1 ring-teal-100">
                         <h3 className="font-sans text-sm font-semibold tracking-wide text-teal-700 uppercase">Why patients choose Namma Physio Centre</h3>
@@ -175,18 +195,19 @@ export function ServiceModal({ service, onClose }: { service: Service | null; on
   );
 }
 
-function InfoList({ title, items }: { title: string; items: string[] }) {
+function InfoList({ title, items, twoCol = false, footnote }: { title: string; items: string[]; twoCol?: boolean; footnote?: string }) {
   return (
     <div className="card p-5">
       <h3 className="font-sans text-sm font-semibold text-navy-900">{title}</h3>
-      <ul className="mt-3 space-y-2 text-[15px] text-muted">
+      <ul className={twoCol ? "mt-3 grid gap-x-6 gap-y-2.5 text-[15px] leading-snug text-muted sm:grid-cols-2" : "mt-3 space-y-2 text-[15px] text-muted"}>
         {items.map((i) => (
           <li key={i} className="flex gap-2.5">
             <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" aria-hidden />
-            {i}
+            <span>{i}</span>
           </li>
         ))}
       </ul>
+      {footnote && <p className="mt-4 border-t border-line/70 pt-3 text-xs text-muted">{footnote}</p>}
     </div>
   );
 }

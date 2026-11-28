@@ -8,8 +8,10 @@ import { requireAuth, sessionMiddleware } from "./auth";
 import { startScheduler } from "./backup";
 import { plainSecretStore, type Ctx, type SecretStore } from "./context";
 import { openDatabase } from "./db";
+import { startInquirySync } from "./inquiry-sync";
 import { adminRoutes, authRoutes } from "./routes/admin";
 import { coreRoutes, HttpError } from "./routes/core";
+import { inquiryRoutes, inquiryWebhookRoutes } from "./routes/inquiries";
 import { reportRoutes } from "./routes/reports";
 
 export const HOST = "127.0.0.1";
@@ -20,6 +22,8 @@ export type ServerOptions = {
   staticDir?: string | null; // built UI; omitted in development (Vite serves it)
   secretStore?: SecretStore;
   scheduler?: boolean;
+  inquirySync?: boolean;
+  inquirySyncIntervalMs?: number;
   log?: (msg: string) => void;
 };
 
@@ -82,10 +86,12 @@ export function createApp(ctx: Ctx, opts: { staticDir?: string | null; allowedPo
     next();
   });
   api.use(express.json({ limit: "2mb" }));
+  api.use(inquiryWebhookRoutes(ctx));
   api.use(sessionMiddleware(ctx));
   api.use(authRoutes(ctx));
   api.use(requireAuth);
   api.use(coreRoutes(ctx));
+  api.use(inquiryRoutes(ctx));
   api.use(reportRoutes(ctx));
   api.use(adminRoutes(ctx));
   api.use((_req, res) => void res.status(404).json({ error: "Not found" }));
@@ -127,12 +133,15 @@ export async function startServer(opts: ServerOptions) {
   ports.push(port);
   if (process.env.NPB_DEV_UI_PORT) ports.push(Number(process.env.NPB_DEV_UI_PORT)); // Vite dev proxy
   const stopScheduler = opts.scheduler === false ? () => {} : startScheduler(ctx, opts.log);
+  const enableInquirySync = opts.inquirySync ?? opts.scheduler !== false;
+  const stopInquirySync = enableInquirySync ? startInquirySync(ctx, { intervalMs: opts.inquirySyncIntervalMs, log: opts.log }) : () => {};
   return {
     ctx,
     port,
     url: `http://${HOST}:${port}`,
     async close() {
       stopScheduler();
+      stopInquirySync();
       await new Promise((r) => server.close(r));
       ctx.db.close();
     },

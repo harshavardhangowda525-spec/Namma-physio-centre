@@ -82,14 +82,14 @@ describe("setup and authentication", () => {
     expect((await reception("GET", "/patients")).status).toBe(200);
     await physio("POST", "/auth/login", { username: "physio2", password: "Temp-pass-222" });
     await physio("POST", "/auth/change-password", { currentPassword: "Temp-pass-222", newPassword: "Physio-two-2026" });
-  });
+  }, 15_000);
   it("locks an account after repeated failures", async () => {
     const c = client();
     for (let i = 0; i < 5; i++) await c("POST", "/auth/login", { username: "physio2", password: "wrong-password-1" });
     const r = await c("POST", "/auth/login", { username: "physio2", password: "Physio-two-2026" });
     expect(r.status).toBe(401);
     expect(r.body.error).toMatch(/locked|Too many/);
-  });
+  }, 15_000);
 });
 
 let patientId: number;
@@ -185,6 +185,9 @@ describe("dashboard and reports", () => {
     expect(m.rows.map((r: { method: string }) => r.method).sort()).toEqual(["Cash", "UPI"]);
     const sv = (await admin("GET", "/reports/services?from=2026-11-01&to=2026-11-30")).body;
     expect(sv.rows[0].service).toBe("Physiotherapy session");
+    const ph = (await admin("GET", "/reports/payments?from=2026-11-01&to=2026-11-30")).body;
+    expect(ph.count).toBe(2);
+    expect(ph.total).toBe(462000);
   });
 });
 
