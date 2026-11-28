@@ -3,19 +3,19 @@ import { CalendarCheck, Clock, MapPin, MessageCircle, Navigation, Phone } from "
 import { PageHeader } from "@/components/page-header";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { ButtonLink } from "@/components/ui";
-import { clinic, fullAddress } from "@/content/clinic";
+import { clinic, fullAddress, whatsappChatUrl } from "@/content/clinic";
 
 export const metadata: Metadata = {
-  title: "Contact",
-  description: `Contact ${clinic.name}, ${fullAddress}. Call ${clinic.phoneDisplay}.`,
+  title: "Contact & Directions",
+  description: `Contact ${clinic.name}, ${fullAddress}. Call ${clinic.phoneDisplay} or chat on WhatsApp to enquire about clinic or home physiotherapy appointments.`,
   alternates: { canonical: "/contact" },
 };
 
 export default function ContactPage() {
-  const wa = `https://wa.me/${clinic.whatsappNumber}?text=${encodeURIComponent("Hello Namma Physio Centre, I would like to enquire about an appointment.")}`;
+  const wa = whatsappChatUrl();
   return (
     <>
-      <PageHeader eyebrow="Contact" title="We're here to help" lead="Call, message or visit us in JP Nagar 8th Phase, Bengaluru." />
+      <PageHeader eyebrow="Contact" title="We're here to help" lead="Call, message on WhatsApp or visit Namma Physiotherapy Centre in JP Nagar 8th Phase, Bengaluru." />
       <section className="container-px grid gap-8 lg:grid-cols-[1fr_1.2fr]">
         <Stagger className="grid content-start gap-5">
           <StaggerItem>
@@ -36,11 +36,11 @@ export default function ContactPage() {
               <div className="flex items-start gap-4">
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-teal-50 text-teal-600"><Phone className="h-5 w-5" aria-hidden /></span>
                 <div className="flex-1">
-                  <h2 className="font-sans text-lg font-semibold">Phone</h2>
+                  <h2 className="font-sans text-lg font-semibold">Phone &amp; WhatsApp</h2>
                   <p className="mt-1 text-muted">{clinic.phoneDisplay}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <ButtonLink href={`tel:${clinic.phoneE164}`} size="sm"><Phone className="h-4 w-4" aria-hidden /> Call now</ButtonLink>
-                    <ButtonLink href={wa} variant="secondary" size="sm"><MessageCircle className="h-4 w-4" aria-hidden /> WhatsApp</ButtonLink>
+                    <ButtonLink href={wa} variant="secondary" size="sm"><MessageCircle className="h-4 w-4" aria-hidden /> WhatsApp enquiry</ButtonLink>
                   </div>
                 </div>
               </div>
@@ -57,7 +57,7 @@ export default function ContactPage() {
                       {clinic.hours.map((h) => (<div key={h.day} className="contents"><dt className="text-navy-900">{h.day}</dt><dd className="text-muted">{h.open ?? "Closed"}{h.note ? ` · ${h.note}` : ""}</dd></div>))}
                     </dl>
                   ) : (
-                    <p className="mt-1 text-sm text-muted">Hours are being confirmed. Please call before visiting. On Saturdays the clinic has an afternoon break and reopens at 3 PM.</p>
+                    <p className="mt-1 text-sm text-muted">Hours are being confirmed. Please call or message before visiting. On Saturdays the clinic has an afternoon break and reopens at 3 PM.</p>
                   )}
                 </div>
               </div>

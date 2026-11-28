@@ -4,7 +4,7 @@ import { FloatingShapes } from "./floating";
 
 export function PageHeader({ eyebrow, title, lead, children }: { eyebrow: string; title: string; lead?: ReactNode; children?: ReactNode }) {
   return (
-    <section className="relative overflow-hidden pt-36 pb-16 sm:pt-44 sm:pb-20">
+    <section className="relative overflow-hidden pt-32 pb-16 sm:pt-40 lg:pt-48 sm:pb-20">
       <div aria-hidden className="bg-mesh absolute inset-0 -z-10" />
       <div aria-hidden className="bg-grid absolute inset-0 -z-10" />
       <FloatingShapes subtle />

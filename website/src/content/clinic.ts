@@ -8,16 +8,22 @@
 
 export type DayHours = { day: string; open: string | null; note?: string };
 
+export const WHATSAPP_PREFILLED_MESSAGE =
+  "Hello, Namma Physiotherapy Centre. I would like to enquire about your physiotherapy services and appointment availability. Could you please assist me?";
+
 export const clinic = {
-  name: "Namma Physio Centre",
-  shortName: "Namma Physio",
+  name: "Namma Physiotherapy Centre",
+  legalAltName: "Namma Physio Centre",
+  shortName: "Namma Physiotherapy",
   category: "Physiotherapy Centre",
   phoneDisplay: "+91 99164 53616",
   phoneE164: "+919916453616",
-  /** WhatsApp availability on this number is NOT yet confirmed. */
+  /** Verified clinic contact number used for WhatsApp click-to-chat enquiries. */
   whatsappNumber: "919916453616",
-  whatsappConfirmed: false,
+  whatsappConfirmed: true,
   email: null as string | null,
+  /** Authorized clinic Gmail used strictly by server-side website appointment notifications. */
+  appointmentGmail: "Smilewithsidhu2008@gmail.com",
   address: {
     line1: "1st Cross, No. 5, Jambusawari Dinne Main Road",
     line2: "Kothnur, Royal County, 8th Phase, J. P. Nagar",
@@ -28,9 +34,10 @@ export const clinic = {
     plusCode: "VH8J+M2 Bengaluru",
   },
   geo: { lat: 12.8667, lng: 77.5801 }, // approximate, derived from Plus Code VH8J+M2
-  area: "JP Nagar, Bengaluru",
+  area: "JP Nagar 8th Phase, Bengaluru",
+  timezone: "Asia/Kolkata",
   google: {
-    /** Snapshot values from the supplied Google Maps listing. Updated live when the Places API is configured. */
+    /** Snapshot values from the supplied Google Maps listing. Updated dynamically when Google sync is configured. */
     rating: 5.0,
     reviewCount: 469,
     snapshotNote: "Google rating snapshot supplied by the clinic",
@@ -61,24 +68,68 @@ export const clinic = {
 } as const;
 
 export const doctor = {
-  name: "Dr. Sunil Kumar",
-  shortName: "Dr. Sunil",
+  name: "Sunil Kumar",
+  shortName: "Sunil Kumar",
   role: "Physiotherapist",
-  /** Fill only after the clinic confirms. Rendered as "To be confirmed" when empty. */
+  experienceYears: 8,
+  experienceHighlight: "8+ Years",
+  experience: "8+ Years of Clinical Physiotherapy Experience",
+  /** Fill only after the clinic provides verified certificates. Rendered as "To be confirmed" when empty. */
   qualifications: [] as string[],
-  experience: null as string | null,
+  certifications: [] as string[],
   registration: null as string | null,
-  /** Areas supported by supplied information (patient reviews) and client confirmation (Nov 2026). */
-  areasOfTreatment: [
-    "Back and neck pain",
-    "Shoulder pain",
-    "Knee injury rehabilitation",
-    "Meniscus tear rehabilitation",
-    "Post-surgical rehabilitation",
-    "Knee replacement rehabilitation",
+  biography: [
+    "Sunil Kumar brings over eight years of clinical physiotherapy and rehabilitation experience, with a patient-centered approach focused on understanding individual conditions, functional limitations and recovery needs.",
+    "His treatment approach combines detailed clinical assessment, evidence-based physiotherapy practices and customized treatment protocols. Each rehabilitation program is planned according to the patient's condition, physical abilities and individual recovery goals.",
+    "At Namma Physiotherapy Centre, the focus is on supporting patients in improving mobility, regaining strength, managing physical limitations and progressing towards greater functional independence through structured physiotherapy care.",
   ],
-  photo: null as string | null, // e.g. "/images/dr-sunil.jpg" once supplied by the clinic
+  /** Areas of clinical care (not described as formally certified specializations unless verified credentials are provided). */
+  areasOfTreatment: [
+    "Orthopedic rehabilitation",
+    "Sports injury rehabilitation",
+    "Post-surgical rehabilitation",
+    "Knee rehabilitation",
+    "Shoulder rehabilitation",
+    "Spine and back pain rehabilitation",
+    "Neurological rehabilitation",
+    "Geriatric physiotherapy",
+    "Functional mobility rehabilitation",
+    "Home-based physiotherapy",
+  ],
+  practiceHighlights: [
+    {
+      title: "Individualized Clinical Assessment",
+      detail: "Every plan begins by evaluating movement, strength, functional limitations and everyday activity demands.",
+    },
+    {
+      title: "Evidence-Based Physiotherapy Care",
+      detail: "Treatment decisions draw on established clinical reasoning and current physiotherapy evidence rather than one-size-fits-all routines.",
+    },
+    {
+      title: "Customized Treatment Protocols",
+      detail: "Exercises and hands-on techniques are tailored to your recovery stage, surgical precautions and personal goals.",
+    },
+    {
+      title: "Clear Guidance & Progress Reviews",
+      detail: "Plain-language explanations, structured home exercise programs and regular reassessment as mobility improves.",
+    },
+  ],
+  photo: null as string | null, // e.g. "/images/sunil-kumar.jpg" once authentic clinic portrait is supplied
 };
+
+export const developerAttribution = {
+  label: "Designed & Developed by Infinity Web & Apps",
+  name: "Infinity Web & Apps",
+  tagline: "Websites. Mobile Apps. Digital Growth.",
+  url: process.env.NEXT_PUBLIC_DEVELOPER_URL || "https://infinity-web-apps.vercel.app",
+  expandedCta: "Want a digital experience like this for your business? Explore Infinity Web & Apps.",
+  /** Kept false until clinic owner approves publishing the expanded promotional CTA. */
+  showExpandedCta: process.env.NEXT_PUBLIC_SHOW_EXPANDED_DEV_CTA === "true",
+} as const;
+
+export function whatsappChatUrl(message = WHATSAPP_PREFILLED_MESSAGE): string {
+  return `https://wa.me/${clinic.whatsappNumber}?text=${encodeURIComponent(message)}`;
+}
 
 /** Mark copy that still needs client sign-off. Shown as a subtle badge in non-production builds. */
 export const DRAFT_COPY = true;
