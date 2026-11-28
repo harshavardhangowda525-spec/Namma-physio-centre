@@ -1,6 +1,6 @@
 # Handoff: current state & next steps
 
-_Last updated: 2026-11-23 (home visit image replaced again per client). Update this file whenever you commit (see `CLAUDE.md`, Rule 1)._
+_Last updated: 2026-11-28 (client's minor changes queued; logo exploration in progress). Update this file whenever you commit (see `CLAUDE.md`, Rule 1)._
 
 ## Continuation prompt
 Paste this into a new session (Claude Code, Antigravity, etc.) with the GitHub repo attached:
@@ -36,6 +36,12 @@ to the same branch.
 ## Next steps
 - [x] Client-requested website changes: 4 services added, MPFL removed, 8 images regenerated/added, pop-up image uncropped. Deployed to production.
 - [x] Home Visit image replaced again (client found it irrelevant): now `home-visit-physiotherapy-v3.jpg`, a physiotherapist supporting an elderly patient's sit-to-stand from his own armchair at home. New filename avoids stale image caches; an alternative (walking-frame in home hallway) is in the Figma file. Deployed.
+- [ ] **Client's minor changes (approved by client, not started):**
+  1. Post-Surgical Rehabilitation, conditions: add recovery after total joint replacement (TJR: total knee / total hip replacement), fractures (incl. after fracture fixation surgery), trauma and accident-related injuries, plus similar post-operative cases (e.g. ACL reconstruction, arthroscopy, spinal surgery). Keep the copy free of recovery guarantees.
+  2. Knee services: add arthritis (knee osteoarthritis) to the knee conditions (Knee Injury Rehabilitation; ask whether to rename it "Knee Pain & Injury Rehabilitation").
+  3. Billing software preview link for the client. NOTE: CLAUDE.md says never deploy billing-desktop. Ask the owner which option: (a) a hosted screenshot/walkthrough page, or (b) a separate demo deployment with fake data only (needs explicit owner approval to relax the rule).
+  4. Insurance features: the owner will attach a PDF from the client. Read it, summarise what "insurance" means for the clinic (e.g. cashless/TPA claims, reimbursement documents, insurance details on invoices), and propose a plan before building. Likely billing-desktop, possibly a website note.
+- [ ] **Logo:** 5 concepts presented to the owner (see chat); owner to pick one, then refine and apply to website (navbar, footer, favicon) and billing app.
 - [ ] Ask the owner what "charts" change the client wanted (skipped for now at owner's request).
 - [ ] Confirm the billing app runs on the owner's Windows PC.
 - [ ] Owner to rotate the admin password (current one was shared in chat).
