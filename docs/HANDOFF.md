@@ -1,33 +1,33 @@
 # Handoff: current state & next steps
 
-_Last updated: 2026-11-28 (Comprehensive v2 client enhancements across `website/` and `billing-desktop/` on preview branch `feat/client-enhancements-v2`). Update this file whenever you commit (see `CLAUDE.md`, Rule 1)._
+_Last updated: 2026-11-28 (Comprehensive v2 client enhancements pushed & synced to `main`, `claude/laughing-turing-saug5v`, `feat/client-enhancements-v2`, and `gh-pages`). Update this file whenever you commit (see `CLAUDE.md`, Rule 1)._
 
 ## Continuation prompt
 Paste this into a new session (Claude Code, Antigravity, etc.) with the GitHub repo attached:
 
 ```text
 Repository: harshavardhangowda525-spec/Namma-physio-centre
-Preview branch: feat/client-enhancements-v2
+Active production branch: main (kept in sync with feat/client-enhancements-v2 and claude/laughing-turing-saug5v)
 Clean pre-upgrade backup branch: backup/pre-enhancements-20261127
-Production branch: main (do NOT merge feat/client-enhancements-v2 into main until client preview approval)
 
 Before doing anything, read CLAUDE.md, docs/HANDOFF.md, docs/WEBSITE-SETUP.md and
 docs/CLINIC-CONFIRMATION-CHECKLIST.md. They describe the two strictly separated products
 (public Next.js website in website/, private offline billing app in billing-desktop/),
-the live & preview deployments, the non-negotiable rules (no invented clinic facts,
+the live deployments, the non-negotiable rules (no invented clinic facts,
 no Gmail/approval controls inside billing-desktop, no secrets in git), and the exact
 remaining client sign-off items.
 
 Then continue with the "Next steps" section of docs/HANDOFF.md, starting at the
 first unchecked item. Show me your plan before making changes. After each piece of
-work: run the checks listed in CLAUDE.md, commit, update docs/HANDOFF.md, and push.
+work: run the checks listed in CLAUDE.md, commit, update docs/HANDOFF.md, and push
+to main (and keep feat/client-enhancements-v2 in sync).
 ```
 
 ## Current state
 - **Branches**:
+  - `main` (`origin/main`): live production branch (`https://namma-physio-centre-psi.vercel.app`), synced with `feat/client-enhancements-v2` and `claude/laughing-turing-saug5v`. Neon additive schema changes also auto-apply idempotently via `ensureSchema()` in `website/src/lib/db.ts`.
+  - `gh-pages` (`origin/gh-pages`): live client billing demo (`https://harshavardhangowda525-spec.github.io/Namma-physio-centre/`) updated with the 5-minute Detailed Physiotherapy Bill module & smartphone handwritten signatures.
   - `backup/pre-enhancements-20261127`: untouched snapshot prior to the v2 client enhancement suite (`7ba331f`).
-  - `feat/client-enhancements-v2`: complete implementation of the 78-section client enhancement specification, ready for Vercel preview review before fast-forwarding `main`.
-  - `main`: current live production (`https://namma-physio-centre-psi.vercel.app`), intentionally untouched until preview sign-off.
 - **Website (`website/`)**:
   - **Medical & Service Updates**:
     - Homepage statistics 2nd column updated from `"2 — Clinic & Home"` to **`8+ Years` · `Clinical Experience`** (`"Over eight years of hands-on physiotherapy and rehabilitation experience."`).
@@ -64,7 +64,8 @@ work: run the checks listed in CLAUDE.md, commit, update docs/HANDOFF.md, and pu
 - [x] Implement Part F dynamic Google Reviews architecture + 6-second auto-sliding carousel.
 - [x] Implement Part G Gmail OAuth 2.0 appointment notifications, mobile doctor approval/reschedule/decline token pages, Google Calendar sync, and patient confirmation emails.
 - [x] Implement Part H–J electronic handwritten signatures + 5-minute Detailed Physiotherapy Bill module + automated tests across `billing-desktop/`.
-- [ ] **Preview Deployment & Database Migration**: Run `website/db/migrations/002_enhancements_v2.sql` on staging/Neon and configure `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`, `GMAIL_NOTIFICATION_EMAIL=Smilewithsidhu2008@gmail.com`, `APPOINTMENT_ACTION_TOKEN_SECRET`, and `CRON_SECRET` in Vercel.
+- [x] Push & synchronize `main` (Vercel production), `claude/laughing-turing-saug5v`, `feat/client-enhancements-v2`, and `gh-pages` (GitHub Pages live billing demo).
+- [ ] **Environment Variables for OAuth & Cron (Vercel)**: Configure `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`, `GMAIL_NOTIFICATION_EMAIL=Smilewithsidhu2008@gmail.com`, `APPOINTMENT_ACTION_TOKEN_SECRET`, and `CRON_SECRET` in Vercel (note: additive Neon v2 tables/columns are created automatically via `ensureSchema()` or `website/db/migrations/002_enhancements_v2.sql`).
 - [ ] **One-Time Clinic Owner OAuth Authorizations** on `/admin`:
   1. Click **Connect Gmail (`Smilewithsidhu2008@gmail.com`)** to authorize automated doctor notifications & patient confirmation emails.
   2. Click **Connect Google Calendar** (optional) to enable automatic slot clash checks & calendar events.
@@ -74,4 +75,3 @@ work: run the checks listed in CLAUDE.md, commit, update docs/HANDOFF.md, and pu
   2. Confirm whether to enable expanded Infinity Web & Apps footer CTA (`NEXT_PUBLIC_SHOW_EXPANDED_DEV_CTA=true`).
   3. Confirm Sunil Kumar's formal degree & registration number from official certificates (do **not** use unverified KiviHealth directory listing showing `20+ years`).
   4. Confirm proposed conditions in Neurological Rehabilitation, Post-Surgical Rehabilitation (combined TKR/PKR wording), and Knee Injury Rehabilitation.
-- [ ] **Production Promotion**: Once client approves the preview deployment, fast-forward `main` to `feat/client-enhancements-v2` and redeploy `gh-pages` demo if desired.

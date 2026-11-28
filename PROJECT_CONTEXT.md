@@ -4,8 +4,8 @@ _Updated 2026-11-28. No secrets in this file. For the full current state and nex
 
 ## Architecture & Strict Separation
 - `website/`: public Next.js 15 + Tailwind CSS 4 + Neon Postgres clinic website. Handles clinic services, Sunil Kumar's practitioner profile, dynamic Google Reviews + auto-carousel, floating WhatsApp & phone CTAs, Gmail OAuth 2.0 appointment notifications (`Smilewithsidhu2008@gmail.com`), mobile doctor approval/reschedule/decline token pages, Google Calendar sync, and patient confirmation emails.
-  - Production (`main`): https://namma-physio-centre-psi.vercel.app
-  - Preview branch (`feat/client-enhancements-v2`) & clean backup (`backup/pre-enhancements-20261127`).
+  - Production (`main`, synced with `feat/client-enhancements-v2` & `claude/laughing-turing-saug5v`): https://namma-physio-centre-psi.vercel.app
+  - Pre-upgrade backup branch: `backup/pre-enhancements-20261127`.
 - `billing-desktop/`: private offline Electron + Express + SQLite billing software bound strictly to `127.0.0.1`. Handles patient records, invoices/receipts, treatment sessions, **smartphone-compatible electronic handwritten signatures**, and the **5-minute Detailed Physiotherapy Bill** module for insurance reimbursement. Contains **zero** Gmail auth or website appointment approval controls; preserves outbound HTTPS inquiry sync (`GET /api/inquiries/sync`).
 - `gh-pages` branch: isolated browser-only client demo (`VITE_DEMO_MODE=true` using fictional sample records) → https://harshavardhangowda525-spec.github.io/Namma-physio-centre/
 
