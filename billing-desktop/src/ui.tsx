@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, Loader2, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { formatINR, rupeesToPaise } from "../shared/billing";
+import { BRAND_LOGO, BRAND_LOGO_WHITE } from "./brand";
 
 export const money = (p: number | null | undefined) => formatINR(p ?? 0);
 export const fmtDate = (iso: string | null | undefined) => {
@@ -193,11 +194,7 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
 export function Logo({ light }: { light?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5">
-      <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden>
-        <rect width="40" height="40" rx="11" fill={light ? "#fff" : "#0b1f3a"} />
-        <path d="M11 27c3-9 6-14 9-14s5 5 9 14" stroke="#3fb5aa" strokeWidth="3.2" fill="none" strokeLinecap="round" />
-        <circle cx="20" cy="10.5" r="2.6" fill="#5cc8e0" />
-      </svg>
+      <img src={light ? BRAND_LOGO_WHITE : BRAND_LOGO} alt="" aria-hidden width={40} height={40} className="h-10 w-10 shrink-0 object-contain" />
       <span className="leading-none">
         <span className={`block font-display text-[17px] font-semibold ${light ? "text-white" : "text-navy-900"}`}>Namma Physio</span>
         <span className={`mt-0.5 block text-[10px] font-semibold tracking-[0.2em] uppercase ${light ? "text-teal-200" : "text-teal-600"}`}>Billing</span>

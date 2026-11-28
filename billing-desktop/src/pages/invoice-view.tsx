@@ -9,6 +9,7 @@ import { useAuth } from "../auth";
 import { downloadInvoicePdf, downloadReceiptPdf } from "../pdf";
 import { DocumentSignatureModal, RenderedSignatureBlock } from "../signature-pad";
 import { Button, ErrorNote, Field, Modal, MoneyInput, StatusBadge, fmtDate, money, todayLocal, useLoad, useToast } from "../ui";
+import { BRAND_LOGO } from "../brand";
 
 type Inv = {
   invoice: {
@@ -24,7 +25,7 @@ function ClinicHeader({ s, compact }: { s: Settings; compact?: boolean }) {
   return (
     <div className={compact ? "text-center" : "flex items-start justify-between gap-6"}>
       <div className={compact ? "" : "flex items-start gap-4"}>
-        {s.clinic.logoDataUrl && <img src={s.clinic.logoDataUrl} alt="" className={compact ? "mx-auto mb-1 h-10" : "h-16 w-16 object-contain"} />}
+        <img src={s.clinic.logoDataUrl || BRAND_LOGO} alt="" className={compact ? "mx-auto mb-1 h-10" : "h-16 w-16 object-contain"} />
         <div>
           <p className={`font-display font-semibold text-navy-900 ${compact ? "text-base" : "text-2xl"}`}>{s.clinic.name}</p>
           {s.clinic.tagline && <p className={`${compact ? "text-[10px]" : "text-sm"} text-teal-700`}>{s.clinic.tagline}</p>}

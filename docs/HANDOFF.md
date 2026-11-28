@@ -1,6 +1,6 @@
 # Handoff: current state & next steps
 
-_Last updated: 2026-11-28 (Comprehensive v2 client enhancements pushed & synced to `main`, `claude/laughing-turing-saug5v`, `feat/client-enhancements-v2`, and `gh-pages`). Update this file whenever you commit (see `CLAUDE.md`, Rule 1)._
+_Last updated: 2026-11-28 (approved "Caring Circle" logo applied; self-sliding reviews carousel with full-review pop-up). Update this file whenever you commit (see `CLAUDE.md`, Rule 1)._
 
 ## Continuation prompt
 Paste this into a new session (Claude Code, Antigravity, etc.) with the GitHub repo attached:
@@ -57,6 +57,14 @@ to main (and keep feat/client-enhancements-v2 in sync).
     - Reproduces the exact layout, column proportions (`[18.47%, 15.02%, 13.89%, 35.41%, 17.21%]`), `Times` typography, date formats (`16-Mar-2026` / `16-Mar-26`), repeating multi-page grey table headers, and Indian currency wording (`"Rupees Forty Four Thousand Four Hundred Only"` for 37 sessions @ ₹1,200 = ₹44,400) of the client's Word reference.
     - Persistent multi-date tap calendar, one-click completed-session import (strictly `completed` sessions for that patient), quick inline new patient modal, auto-saved drafts, superseding revision (`-R2`) workflow, and zero duplicate accounting entries in `invoices`.
   - **Demo Sandbox (`src/demo-backend.ts`)**: updated with seeded Detailed Bill, signature endpoints, RBAC, and revision workflow (`npm run build:demo`).
+
+## Latest changes (Nov 28, evening)
+- **Logo approved by client: "Caring Circle"** (two hands circling a person in motion). Applied everywhere:
+  - Website: `Logo` component in `website/src/components/ui.tsx` (header, footer white version, appointment pages), `website/public/brand/logo-mark.png` + `logo-mark-white.png`, browser-tab icon `website/src/app/icon.png`, iPhone icon `apple-icon.png` (old `icon.svg` removed).
+  - Billing app: `billing-desktop/src/brand.ts` (inline PNG data URLs) used by the sidebar/login `Logo`, on-screen invoices/receipts, generated PDFs (fallback when no clinic logo uploaded in Settings), Settings preview; browser-tab icon `src/assets/favicon.png`; installer icon `billing-desktop/build/icon.png` (`electron-builder.yml`).
+  - Source artwork: Figma file "Namma Physio Centre – Service Images" (key `LSijHcTjGKvIthcUZAIp54`). Raster for now; redraw as vector before print/signage. Run a reverse-image + IP India Class 44 check before registering (hands-in-circle is a common motif).
+- **Reviews carousel** (`website/src/components/reviews.tsx`): continuous self-sliding marquee, pauses on hover/touch/focus/Pause button, tapping a review opens a full-review pop-up (`ReviewDialog`, also used on the /reviews list). Reduced-motion users get a swipeable row.
+- **All 469 Google reviews:** only via the official Business Profile API (already built: `/api/admin/google-reviews/connect`). Needs: Google Cloud project with Business Profile APIs access approved, `GOOGLE_OAUTH_CLIENT_ID/SECRET`, `OAUTH_TOKEN_ENCRYPTION_KEY`, `CRON_SECRET` in Vercel, then the clinic owner clicks Connect in /admin. Never scrape or copy reviews from Google Maps.
 
 ## Next steps
 - [x] Create clean backup branch `backup/pre-enhancements-20261127` and preview branch `feat/client-enhancements-v2`.

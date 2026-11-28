@@ -16,7 +16,7 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  # icon: build/icon.ico   # add a 256x256 .ico before release
+  icon: build/icon.png
 nsis:
   oneClick: false
   perMachine: false

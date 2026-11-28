@@ -59,7 +59,7 @@ export default async function ReviewsPage() {
           <div className="pt-8">
             <SectionHeading align="left" title="Browse & search reviews" />
             <div className="mt-8">
-              <ReviewsBrowser reviews={data.reviews} />
+              <ReviewsBrowser reviews={data.reviews} mapsUrl={data.mapsUrl} />
             </div>
           </div>
         )}

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
@@ -107,8 +108,9 @@ export function GoogleG({ size = 18 }: { size?: number }) {
 }
 
 /**
- * Preserves the approved Namma Physiotherapy Centre mark until the client
- * selects one of the proposed concepts at /brand-concepts.
+ * Namma Physiotherapy Centre brand lockup. The "Caring Circle" mark was
+ * approved by the clinic (Nov 2026). `light` renders the white mark for dark
+ * backgrounds. Source files live in public/brand/.
  */
 export function Logo({
   className = "",
@@ -121,24 +123,15 @@ export function Logo({
 }) {
   return (
     <span className={`inline-flex min-w-0 items-center gap-3 ${className}`}>
-      <svg
-        width={prominent ? "44" : "38"}
-        height={prominent ? "44" : "38"}
-        viewBox="0 0 40 40"
+      <Image
+        src={light ? "/brand/logo-mark-white.png" : "/brand/logo-mark.png"}
+        alt=""
         aria-hidden
-        className={`shrink-0 ${prominent ? "h-9 w-9 sm:h-11 sm:w-11" : ""}`}
-      >
-        <defs>
-          <linearGradient id={light ? "lg-np-light" : "lg-np"} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#16978d" />
-            <stop offset="1" stopColor="#5cc8e0" />
-          </linearGradient>
-        </defs>
-        <rect width="40" height="40" rx="12" fill={light ? "#ffffff" : "#0b1f3a"} />
-        <path d="M11 27c3-9 6-14 9-14s5 5 9 14" stroke={`url(#${light ? "lg-np-light" : "lg-np"})`} strokeWidth="3.2" fill="none" strokeLinecap="round" />
-        <circle cx="20" cy="10.5" r="2.6" fill={`url(#${light ? "lg-np-light" : "lg-np"})`} />
-        <path d="M14 30h12" stroke={light ? "#0b1f3a" : "#ffffff"} strokeOpacity=".5" strokeWidth="2" strokeLinecap="round" />
-      </svg>
+        width={prominent ? 52 : 44}
+        height={prominent ? 52 : 44}
+        priority={prominent}
+        className={`shrink-0 object-contain ${prominent ? "h-9 w-9 sm:h-[52px] sm:w-[52px]" : "h-11 w-11"}`}
+      />
       <span className="min-w-0 leading-tight">
         <span
           className={`block font-display font-semibold tracking-tight ${

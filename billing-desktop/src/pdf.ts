@@ -10,6 +10,7 @@ import {
 } from "../shared/billing";
 import type { DocumentSignatureRecord } from "../shared/types";
 import type { Settings } from "../server/settings";
+import { BRAND_LOGO } from "./brand";
 
 const NAVY: [number, number, number] = [11, 31, 58];
 const TEAL: [number, number, number] = [22, 151, 141];
@@ -56,7 +57,7 @@ function tryAddPngOrJpeg(doc: jsPDF, dataUrl: string | null | undefined, x: numb
 }
 
 function drawBrandHeader(doc: jsPDF, s: Settings, x: number, y: number): number {
-  if (!tryAddPngOrJpeg(doc, s.clinic.logoDataUrl, x, y, 13, 13)) {
+  if (!tryAddPngOrJpeg(doc, s.clinic.logoDataUrl, x, y, 13, 13) && !tryAddPngOrJpeg(doc, BRAND_LOGO, x, y, 13, 13)) {
     doc.setFillColor(...NAVY);
     doc.roundedRect(x, y, 13, 13, 3, 3, "F");
     doc.setDrawColor(63, 181, 170);

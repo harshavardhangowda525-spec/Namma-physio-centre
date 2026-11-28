@@ -8,6 +8,7 @@ import { useAuth } from "../auth";
 import { SignatureCanvasPad } from "../signature-pad";
 import { ChangePasswordPage } from "./login";
 import { Button, Empty, ErrorNote, Field, Modal, MoneyInput, PageTitle, fmtDateTime, money, todayLocal, useLoad, useToast } from "../ui";
+import { BRAND_LOGO } from "../brand";
 
 type Tab = "clinic" | "invoice" | "catalogue" | "users" | "backups" | "audit" | "privacy" | "account";
 
@@ -137,7 +138,7 @@ function SettingsForm({ tab }: { tab: "clinic" | "invoice" | "catalogue" | "priv
         <div className="grid gap-6 md:grid-cols-2">
           <Section title="Clinic Logo" desc="PNG, JPEG or WebP under 500 KB. Square images work best.">
             <div className="flex flex-wrap items-center gap-4">
-              <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl border border-line bg-cream">{s.clinic.logoDataUrl ? <img src={s.clinic.logoDataUrl} alt="Clinic logo" className="h-full w-full object-contain" /> : <span className="text-xs text-muted">No logo</span>}</div>
+              <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl border border-line bg-cream"><img src={s.clinic.logoDataUrl || BRAND_LOGO} alt="Clinic logo" className="h-full w-full object-contain" /></div>
               <label className="cursor-pointer"><span className="inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-semibold text-navy-900 hover:border-teal-400"><Upload className="h-4 w-4" /> Choose logo</span><input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => onLogo(e.target.files?.[0])} /></label>
               {s.clinic.logoDataUrl && <Button variant="ghost" onClick={() => up("clinic", { logoDataUrl: null })}>Remove</Button>}
             </div>
