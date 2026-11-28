@@ -34,7 +34,7 @@ Without `DATABASE_URL`, booking requests and action tokens run safely **in memor
 | `GOOGLE_CALENDAR_ID` | Calendar ID (`primary` by default) |
 | `GOOGLE_PLACES_API_KEY`, `GOOGLE_PLACE_ID` | Places API (New) fallback for live rating, total review count, and latest 5 reviews |
 | `GOOGLE_GBP_ACCOUNT_ID`, `GOOGLE_GBP_LOCATION_ID` | Optional explicit Google Business Profile IDs for full dynamic review sync |
-| `CRON_SECRET` | Bearer secret authenticating Vercel Cron (`/api/cron/reviews-sync`, scheduled `0 */8 * * *` in `vercel.json`) |
+| `CRON_SECRET` | Bearer secret authenticating Vercel Cron (`/api/cron/reviews-sync`, scheduled `30 2 * * *` daily in `vercel.json` for Vercel Hobby compatibility) |
 | `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL`, `NOTIFY_TO_EMAIL` | Optional transactional email fallback when Gmail OAuth is not yet connected |
 | `NEXT_PUBLIC_SHOW_EXPANDED_DEV_CTA` | Keep `false` unless the clinic owner approves the expanded Infinity Web & Apps footer CTA |
 

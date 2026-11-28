@@ -261,7 +261,7 @@ export default async function AdminPage({
             <p className="mt-2 text-xs leading-relaxed text-muted">
               {reviewsMeta?.last_synced_at
                 ? `Last synced ${new Date(reviewsMeta.last_synced_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} (${reviewsMeta.synced_reviews} reviews, status: ${reviewsMeta.last_status}).`
-                : "Connect verified Google Business Profile OAuth (or Places API key) to synchronize authentic patient reviews every 8 hours."}
+                : "Connect verified Google Business Profile OAuth (or Places API key) to synchronize authentic patient reviews daily (and on visits when the cache is older than 8 hours)."}
             </p>
           </div>
           <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3">
