@@ -152,7 +152,7 @@ export default async function HomePage() {
                   <Award className="h-5 w-5" aria-hidden />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-navy-900">8+ Years Experience</p>
+                  <p className="text-sm font-semibold text-navy-900">{doctor.experienceHighlight} Experience</p>
                   <p className="text-xs text-muted">Assessment-led protocols</p>
                 </div>
               </div>
@@ -183,7 +183,7 @@ export default async function HomePage() {
                 <span className="font-display text-2xl font-medium text-teal-700">Years</span>
               </dd>
               <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-muted">
-                Over eight years of hands-on physiotherapy and rehabilitation experience.
+                Over {doctor.experienceYears} years of hands-on physiotherapy and rehabilitation experience.
               </p>
             </div>
 

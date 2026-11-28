@@ -71,15 +71,15 @@ export const doctor = {
   name: "Sunil Kumar",
   shortName: "Sunil Kumar",
   role: "Physiotherapist",
-  experienceYears: 8,
-  experienceHighlight: "8+ Years",
-  experience: "8+ Years of Clinical Physiotherapy Experience",
+  experienceYears: 18, // confirmed by the clinic owner (Nov 2026)
+  experienceHighlight: "18+ Years",
+  experience: "18+ Years of Clinical Physiotherapy Experience",
   /** Fill only after the clinic provides verified certificates. Rendered as "To be confirmed" when empty. */
   qualifications: [] as string[],
   certifications: [] as string[],
   registration: null as string | null,
   biography: [
-    "Sunil Kumar brings over eight years of clinical physiotherapy and rehabilitation experience, with a patient-centered approach focused on understanding individual conditions, functional limitations and recovery needs.",
+    "Sunil Kumar brings over eighteen years of clinical physiotherapy and rehabilitation experience, with a patient-centered approach focused on understanding individual conditions, functional limitations and recovery needs.",
     "His treatment approach combines detailed clinical assessment, evidence-based physiotherapy practices and customized treatment protocols. Each rehabilitation program is planned according to the patient's condition, physical abilities and individual recovery goals.",
     "At Namma Physiotherapy Centre, the focus is on supporting patients in improving mobility, regaining strength, managing physical limitations and progressing towards greater functional independence through structured physiotherapy care.",
   ],

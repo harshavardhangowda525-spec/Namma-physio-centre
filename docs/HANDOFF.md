@@ -30,7 +30,7 @@ to main (and keep feat/client-enhancements-v2 in sync).
   - `backup/pre-enhancements-20261127`: untouched snapshot prior to the v2 client enhancement suite (`7ba331f`).
 - **Website (`website/`)**:
   - **Medical & Service Updates**:
-    - Homepage statistics 2nd column updated from `"2 — Clinic & Home"` to **`8+ Years` · `Clinical Experience`** (`"Over eight years of hands-on physiotherapy and rehabilitation experience."`).
+    - Homepage statistics 2nd column updated from `"2 — Clinic & Home"` to **`18+ Years` · `Clinical Experience`** (corrected from 8+ on Nov 28; value lives in `doctor.experienceYears`).
     - Homepage **Our Services** expanded from 6 to **7 featured cards** (added **Sports Injury Rehabilitation**) with symmetrical 4-col/6-col responsive centering.
     - **11 published services**: added and published **Neurological Rehabilitation** (`neurological-rehabilitation`, legacy slug `neurological-physiotherapy` supported) with 6 condition items flagged in `proposedConditions` and zero specialist certification claims.
     - Added prominent **Evidence-Based Physiotherapy Practice** spotlight & 6 clinical highlights in *Why Choose Namma Physiotherapy Centre?*.
@@ -39,7 +39,7 @@ to main (and keep feat/client-enhancements-v2 in sync).
     - Reordered **Knee Injury Rehabilitation** (removed final two items *Knee Joint Stiffness* and *Arthritis-related Mobility Limitations*; placed *Meniscus injuries* 1st, *Ligament problems* 2nd, *Kneecap (patellofemoral) problems* 3rd).
     - Reordered **Post-Surgical Rehabilitation** (combined fracture + trauma into *Post-fracture and trauma rehabilitation*; placed *Post Total Knee Replacement (TKR) and Partial Knee Replacement (PKR) Rehabilitation* 1st in `proposedConditions`, *Post Total Hip Replacement (THR) Rehabilitation* 2nd, *Post-fracture and trauma rehabilitation* 3rd, *Rehabilitation following fracture fixation surgery* 4th).
     - Replaced defective 3-hand `shoulder-pain-rehabilitation.jpg` with anatomically verified physiotherapy artwork and added *Post-arthroscopic shoulder rehabilitation*; generated anatomically verified `neurological-rehabilitation.jpg`; expanded *Home Visit Physiotherapy* for geriatric, neurological, and post-surgical care.
-    - Expanded **Sunil Kumar** profile (`8+ Years of Clinical Physiotherapy Experience`, 3-paragraph clinical bio, 10 Areas of Clinical Care, 4 Customized Treatment Protocol pillars, honest `"Pending clinic certificate verification"` badge for unverified degrees/registrations).
+    - Expanded **Sunil Kumar** profile (`18+ Years of Clinical Physiotherapy Experience`, 3-paragraph clinical bio, 10 Areas of Clinical Care, 4 Customized Treatment Protocol pillars, honest `"Pending clinic certificate verification"` badge for unverified degrees/registrations).
   - **Branding, Contact & Reviews**:
     - Two-row desktop header (`28–30px` prominent clinic name) + responsive mobile header; preserved current live logo until client approves one of the **3 original logo concept suites** previewed at `/brand-concepts` (`public/brand-concepts/`).
     - Floating **WhatsApp** (with exact pre-filled message) & **Call Now** (`tel:+919916453616`) buttons across all public pages.
@@ -63,6 +63,7 @@ to main (and keep feat/client-enhancements-v2 in sync).
   - Website: `Logo` component in `website/src/components/ui.tsx` (header, footer white version, appointment pages), `website/public/brand/logo-mark.png` + `logo-mark-white.png`, browser-tab icon `website/src/app/icon.png`, iPhone icon `apple-icon.png` (old `icon.svg` removed).
   - Billing app: `billing-desktop/src/brand.ts` (inline PNG data URLs) used by the sidebar/login `Logo`, on-screen invoices/receipts, generated PDFs (fallback when no clinic logo uploaded in Settings), Settings preview; browser-tab icon `src/assets/favicon.png`; installer icon `billing-desktop/build/icon.png` (`electron-builder.yml`).
   - Source artwork: Figma file "Namma Physio Centre – Service Images" (key `LSijHcTjGKvIthcUZAIp54`). Raster for now; redraw as vector before print/signage. Run a reverse-image + IP India Class 44 check before registering (hands-in-circle is a common motif).
+- **Experience corrected to 18+ years** (owner-confirmed; Antigravity had 8+). Single source: `doctor.experienceYears` / `experienceHighlight` / `experience` in `website/src/content/clinic.ts`; one literal kept in `services.ts` ("Over 18 years…", keep in sync).
 - **Reviews carousel** (`website/src/components/reviews.tsx`): continuous self-sliding marquee, pauses on hover/touch/focus/Pause button, tapping a review opens a full-review pop-up (`ReviewDialog`, also used on the /reviews list). Reduced-motion users get a swipeable row.
 - **All 469 Google reviews:** only via the official Business Profile API (already built: `/api/admin/google-reviews/connect`). Needs: Google Cloud project with Business Profile APIs access approved, `GOOGLE_OAUTH_CLIENT_ID/SECRET`, `OAUTH_TOKEN_ENCRYPTION_KEY`, `CRON_SECRET` in Vercel, then the clinic owner clicks Connect in /admin. Never scrape or copy reviews from Google Maps.
 

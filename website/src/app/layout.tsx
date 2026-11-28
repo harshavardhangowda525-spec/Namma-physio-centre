@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     template: `%s | ${clinic.name}`,
   },
   description:
-    "Evidence-based physiotherapy and customized rehabilitation protocols at Namma Physiotherapy Centre, JP Nagar 8th Phase, Bengaluru. Over 8+ years of clinical experience in orthopedic, sports injury, post-surgical, spine, shoulder, knee, neurological and home physiotherapy.",
+    "Evidence-based physiotherapy and customized rehabilitation protocols at Namma Physiotherapy Centre, JP Nagar 8th Phase, Bengaluru. Over 18 years of clinical experience in orthopedic, sports injury, post-surgical, spine, shoulder, knee, neurological and home physiotherapy.",
   keywords: [
     "physiotherapy JP Nagar",
     "Namma Physiotherapy Centre",

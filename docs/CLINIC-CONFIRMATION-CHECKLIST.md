@@ -5,8 +5,8 @@ Nothing below is published as verified fact until the clinic confirms it. Each i
 ## 1. Practitioner & Clinic Credentials
 | Item | Current state on site | Notes / Update location |
 |---|---|---|
-| Years of clinical experience | **Published: `8+ Years`** (confirmed in client brief) | `website/src/content/clinic.ts` → `doctor.experienceYears` / homepage stats |
-| Sunil Kumar's formal degree(s) (e.g. BPT / MPT) | Shown as **"Pending clinic certificate verification"** | `website/src/content/clinic.ts` → `doctor.qualifications`. **Important discrepancy**: a third-party KiviHealth listing claims *"BPT, 20+ years experience, Reg: BLU02726ALCOC"*, which contradicts the client-confirmed `8+ years` and was therefore **not** used. Verify directly from certificates. |
+| Years of clinical experience | **Published: `18+ Years`** (confirmed by the clinic owner, Nov 2026; earlier `8+` was a transcription error) | `website/src/content/clinic.ts` → `doctor.experienceYears` / homepage stats |
+| Sunil Kumar's formal degree(s) (e.g. BPT / MPT) | Shown as **"Pending clinic certificate verification"** | `website/src/content/clinic.ts` → `doctor.qualifications`. **Important discrepancy**: a third-party KiviHealth listing claims *"BPT, 20+ years experience, Reg: BLU02726ALCOC"*, which differs from the owner-confirmed `18+ years` (Nov 2026) and was therefore **not** used. Verify directly from certificates. |
 | Professional council registration number (e.g. KSCPT / IAP) | Not shown (`null`) | `website/src/content/clinic.ts` → `doctor.registration` & `billing-desktop` Settings → *Verified qualification* |
 | Practitioner portrait & real clinic photographs | Honest placeholder / labelled rehabilitation illustrations | `website/public/images/site/` & `website/src/content/clinic.ts` → `doctor.photo` |
 | Full weekly operating hours & closed days | Partial (Saturday break + 3 PM reopen noted; `hoursConfirmed: false`) | `website/src/content/clinic.ts` → `clinic.hours` & `website/src/content/booking.ts` |

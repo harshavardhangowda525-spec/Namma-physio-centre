@@ -82,7 +82,7 @@ export default function AboutPage() {
                 </MaskReveal>
               </Parallax>
 
-              {/* Prominent 8+ Years Clinical Experience Card */}
+              {/* Prominent clinical experience card (doctor.experienceHighlight) */}
               <div className="rounded-3xl bg-navy-900 p-6 text-white shadow-[var(--shadow-lift)]">
                 <div className="flex items-center gap-4">
                   <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-teal-500/20 text-teal-300 ring-1 ring-teal-400/30">

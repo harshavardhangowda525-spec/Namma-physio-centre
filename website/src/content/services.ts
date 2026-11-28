@@ -546,7 +546,7 @@ export const featuredServices = publicServices.filter((s) => s.featured);
 
 /** Clinic-wide differentiators supported by verified clinic details and Google patient feedback. */
 export const verifiedDifferentiators = [
-  "Over 8+ years of clinical physiotherapy and rehabilitation experience",
+  "Over 18 years of clinical physiotherapy and rehabilitation experience", // keep in sync with doctor.experienceYears
   "Evidence-based physiotherapy guided by individual clinical assessment",
   "Customized treatment protocols tailored to your condition and recovery goals",
   "Both clinic consultations in JP Nagar and home physiotherapy visits available",
