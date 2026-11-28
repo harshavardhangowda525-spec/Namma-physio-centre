@@ -157,7 +157,7 @@ const MIGRATIONS: string[] = [
     message TEXT
   );
   `,
-  `
+  /* 2 — website appointment inquiries sync */ `
   CREATE TABLE appointment_inquiries (
     id INTEGER PRIMARY KEY,
     remote_id INTEGER,
@@ -180,6 +180,74 @@ const MIGRATIONS: string[] = [
   CREATE INDEX appointment_inquiries_submitted_idx ON appointment_inquiries (submitted_at DESC, remote_id DESC, id DESC);
   CREATE INDEX appointment_inquiries_remote_idx ON appointment_inquiries (remote_id);
   CREATE INDEX appointment_inquiries_mobile_idx ON appointment_inquiries (mobile);
+  `,
+  /* 3 — electronic handwritten signatures & Detailed Physiotherapy Bills */ `
+  CREATE TABLE saved_signatures (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    signer_name TEXT NOT NULL,
+    signer_qualification TEXT NOT NULL DEFAULT '',
+    image_cipher TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  CREATE TABLE document_signatures (
+    id INTEGER PRIMARY KEY,
+    doc_type TEXT NOT NULL CHECK (doc_type IN ('invoice', 'receipt', 'detailed_bill', 'session_statement')),
+    doc_id INTEGER NOT NULL,
+    doc_no TEXT NOT NULL,
+    doc_version INTEGER NOT NULL DEFAULT 1,
+    payload_sha256 TEXT NOT NULL,
+    image_cipher TEXT NOT NULL,
+    signer_user_id INTEGER NOT NULL REFERENCES users(id),
+    signer_username TEXT NOT NULL,
+    signer_name TEXT NOT NULL,
+    signer_qualification TEXT NOT NULL DEFAULT '',
+    signed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    UNIQUE (doc_type, doc_id, doc_version)
+  );
+  CREATE INDEX document_signatures_lookup_idx ON document_signatures (doc_type, doc_id);
+
+  CREATE TABLE detailed_bills (
+    id INTEGER PRIMARY KEY,
+    bill_no TEXT NOT NULL UNIQUE,
+    version INTEGER NOT NULL DEFAULT 1,
+    parent_bill_id INTEGER REFERENCES detailed_bills(id),
+    superseded_by_id INTEGER REFERENCES detailed_bills(id),
+    patient_id INTEGER NOT NULL REFERENCES patients(id),
+    patient_name TEXT NOT NULL,
+    patient_age_gender TEXT NOT NULL DEFAULT '',
+    referred_by TEXT NOT NULL DEFAULT '',
+    treatment_start_date TEXT NOT NULL,
+    treatment_end_date TEXT NOT NULL,
+    bill_date TEXT NOT NULL,
+    default_charge INTEGER NOT NULL DEFAULT 120000,
+    total_sessions INTEGER NOT NULL,
+    total_amount INTEGER NOT NULL,
+    amount_in_words TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('draft', 'ready_for_signature', 'signed', 'finalized', 'shared', 'cancelled', 'superseded')),
+    signed_at TEXT,
+    shared_at TEXT,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX detailed_bills_patient_idx ON detailed_bills (patient_id, bill_date DESC);
+  CREATE INDEX detailed_bills_status_idx ON detailed_bills (status, updated_at DESC);
+
+  CREATE TABLE detailed_bill_sessions (
+    id INTEGER PRIMARY KEY,
+    detailed_bill_id INTEGER NOT NULL REFERENCES detailed_bills(id) ON DELETE CASCADE,
+    sl_no INTEGER NOT NULL,
+    session_date TEXT NOT NULL,
+    day_name TEXT NOT NULL,
+    particulars TEXT NOT NULL DEFAULT 'Physiotherapy Charges',
+    amount INTEGER NOT NULL,
+    source_appointment_id INTEGER REFERENCES appointments(id) ON DELETE SET NULL
+  );
+  CREATE INDEX detailed_bill_sessions_bill_idx ON detailed_bill_sessions (detailed_bill_id, sl_no ASC);
   `,
 ];
 

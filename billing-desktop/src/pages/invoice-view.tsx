@@ -1,11 +1,13 @@
-import { ArrowLeft, Ban, Download, IndianRupee, Pencil, Printer, Receipt, Trash2 } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, Download, IndianRupee, Pencil, PenTool, Printer, Receipt, Trash2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { amountInWords } from "../../shared/billing";
+import type { DocumentSignatureRecord } from "../../shared/types";
 import type { Settings } from "../../server/settings";
 import { del, get, post, saveAsPdf } from "../api";
 import { useAuth } from "../auth";
 import { downloadInvoicePdf, downloadReceiptPdf } from "../pdf";
+import { DocumentSignatureModal, RenderedSignatureBlock } from "../signature-pad";
 import { Button, ErrorNote, Field, Modal, MoneyInput, StatusBadge, fmtDate, money, todayLocal, useLoad, useToast } from "../ui";
 
 type Inv = {
@@ -50,21 +52,6 @@ function Paper({ children, format }: { children: ReactNode; format: "a4" | "rece
   );
 }
 
-function Signature({ s }: { s: Settings }) {
-  if (!s.invoice.showSignature && !s.invoice.showStamp) return null;
-  return (
-    <div className="mt-14 flex items-end justify-between">
-      {s.invoice.showStamp ? <div className="grid h-24 w-24 place-items-center rounded-full border-2 border-dashed border-line text-center text-[10px] text-muted">Clinic stamp</div> : <span />}
-      {s.invoice.showSignature && (
-        <div className="w-56 text-center">
-          <div className="border-t border-navy-900 pt-1 text-xs font-semibold text-navy-900">Authorised signatory</div>
-          <p className="text-[10px] text-muted">For {s.clinic.name}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function InvoiceViewPage() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -72,13 +59,20 @@ export function InvoiceViewPage() {
   const { can } = useAuth();
   const { data, error, reload } = useLoad(() => get<Inv>(`/invoices/${id}`), [id]);
   const { data: s } = useLoad(() => get<Settings>("/settings"), []);
+  const { data: sigRes } = useLoad(
+    () => (id ? get<{ signature: DocumentSignatureRecord | null }>(`/documents/invoice/${id}/signature`) : Promise.resolve(null)),
+    [id],
+  );
   const [format, setFormat] = useState<"a4" | "receipt" | null>(null);
   const [paying, setPaying] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [sigOverride, setSigOverride] = useState<DocumentSignatureRecord | null>(null);
 
   if (error) return <ErrorNote error={error} />;
   if (!data || !s) return <p className="text-muted">Loading…</p>;
   const { invoice: inv, items, payments } = data;
+  const activeSig = sigOverride ?? sigRes?.signature ?? null;
   const fmt = format ?? s.invoice.defaultFormat;
   const balance = inv.total - inv.paid;
   const isVoid = inv.status === "void";
@@ -87,7 +81,7 @@ export function InvoiceViewPage() {
 
   function handlePdf() {
     if (window.desktop) return void saveAsPdf(pdfName);
-    downloadInvoicePdf(data!, s!, pdfName);
+    downloadInvoicePdf({ ...data!, signature: activeSig }, s!, pdfName);
     toast("Invoice PDF downloaded");
   }
 
@@ -96,7 +90,14 @@ export function InvoiceViewPage() {
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to="/invoices" className="mb-2 inline-flex items-center gap-1 text-sm font-semibold text-teal-700"><ArrowLeft className="h-4 w-4" /> Invoices</Link>
-          <h1 className="flex items-center gap-3 font-display text-3xl">{inv.invoice_no} <StatusBadge status={inv.status} /></h1>
+          <h1 className="flex flex-wrap items-center gap-3 font-display text-3xl">
+            {inv.invoice_no} <StatusBadge status={inv.status} />
+            {activeSig && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 font-sans text-xs font-semibold text-teal-800 ring-1 ring-teal-200">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Signed by {activeSig.signerName}
+              </span>
+            )}
+          </h1>
           <p className="text-sm text-muted">{inv.patient_name} · <Link className="text-teal-700 hover:underline" to={`/patients/${inv.patient_id}`}>{inv.patient_code}</Link>{inv.created_by_name && ` · Created by ${inv.created_by_name}`}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -105,10 +106,15 @@ export function InvoiceViewPage() {
               <button key={f} onClick={() => setFormat(f)} aria-pressed={fmt === f} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${fmt === f ? "bg-navy-900 text-white" : "text-navy-800"}`}>{f === "a4" ? "A4" : "Receipt (80mm)"}</button>
             ))}
           </div>
+          {!isVoid && !activeSig && can("signatures.manage") && (
+            <Button variant="secondary" onClick={() => setSigning(true)}>
+              <PenTool className="h-4 w-4" /> Sign Invoice
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print</Button>
           <Button variant="secondary" onClick={handlePdf}><Download className="h-4 w-4" /> Download PDF</Button>
           {!isVoid && balance > 0 && can("payments.write") && <Button onClick={() => setPaying(true)}><IndianRupee className="h-4 w-4" /> Record payment</Button>}
-          {!isVoid && inv.paid === 0 && can("invoices.write") && <Button variant="secondary" onClick={() => nav(`/invoices/${inv.id}/edit`)}><Pencil className="h-4 w-4" /> Edit</Button>}
+          {!isVoid && inv.paid === 0 && !activeSig && can("invoices.write") && <Button variant="secondary" onClick={() => nav(`/invoices/${inv.id}/edit`)}><Pencil className="h-4 w-4" /> Edit</Button>}
           {!isVoid && can("invoices.void") && <Button variant="ghost" className="!text-rose-700" onClick={() => setVoiding(true)}><Ban className="h-4 w-4" /> Void</Button>}
         </div>
       </div>
@@ -182,7 +188,13 @@ export function InvoiceViewPage() {
                 </div>
               )}
               {s.tax.note && <p className="mt-6 text-xs text-muted">{s.tax.note}</p>}
-              <Signature s={s} />
+              <RenderedSignatureBlock
+                clinicName={s.clinic.name}
+                showSignature={s.invoice.showSignature}
+                showStamp={s.invoice.showStamp}
+                stampDataUrl={s.clinic.stampDataUrl}
+                signature={activeSig}
+              />
               <div className="mt-auto border-t border-line pt-4 text-center text-xs text-muted">
                 {s.invoice.footerNote && <p className="font-medium text-navy-800">{s.invoice.footerNote}</p>}
                 {s.invoice.terms && <p className="mt-1">{s.invoice.terms}</p>}
@@ -207,6 +219,7 @@ export function InvoiceViewPage() {
             <p className="flex justify-between"><span>Paid</span><span>{money(inv.paid)}</span></p>
             <p className="flex justify-between"><span>Balance</span><span>{money(isVoid ? 0 : balance)}</span></p>
             {payments.map((p) => <p key={p.id} className="text-[10px]">{fmtDate(p.paid_on)} {p.method} {money(p.amount)}</p>)}
+            {activeSig && <p className="mt-1 text-center text-[10px]">Signed: {activeSig.signerName}</p>}
             <div className="my-2 border-t border-dashed border-ink/40" />
             <p className="text-center text-[10px]">{s.invoice.footerNote}</p>
           </Paper>
@@ -237,6 +250,16 @@ export function InvoiceViewPage() {
       <Modal open={voiding} onClose={() => setVoiding(false)} title="Void invoice">
         <VoidForm invoiceId={inv.id} onDone={() => (setVoiding(false), reload(), toast("Invoice voided"))} />
       </Modal>
+      <DocumentSignatureModal
+        open={signing}
+        onClose={() => setSigning(false)}
+        docType="invoice"
+        docId={inv.id}
+        docLabel={`Invoice ${inv.invoice_no}`}
+        defaultSignerName={s.clinic.signerName || "Sunil Kumar"}
+        defaultQualification={s.clinic.signerQualification || ""}
+        onSigned={(sig) => setSigOverride(sig)}
+      />
     </div>
   );
 }
@@ -296,23 +319,44 @@ type Pay = { id: number; receipt_no: string; amount: number; method: string; ref
 export function ReceiptViewPage() {
   const { id } = useParams();
   const toast = useToast();
+  const { can } = useAuth();
   const { data: p, error } = useLoad(() => get<Pay>(`/payments/${id}`), [id]);
   const { data: s } = useLoad(() => get<Settings>("/settings"), []);
+  const { data: sigRes } = useLoad(
+    () => (id ? get<{ signature: DocumentSignatureRecord | null }>(`/documents/receipt/${id}/signature`) : Promise.resolve(null)),
+    [id],
+  );
+  const [signing, setSigning] = useState(false);
+  const [sigOverride, setSigOverride] = useState<DocumentSignatureRecord | null>(null);
+
   if (error) return <ErrorNote error={error} />;
   if (!p || !s) return <p className="text-muted">Loading…</p>;
+  const activeSig = sigOverride ?? sigRes?.signature ?? null;
   const pdfName = `Receipt ${p.receipt_no.replace(/\//g, "-")} ${p.patient_name}.pdf`;
   return (
     <div>
       <div className="no-print mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to={`/invoices/${p.invoice_id}`} className="mb-2 inline-flex items-center gap-1 text-sm font-semibold text-teal-700"><ArrowLeft className="h-4 w-4" /> Invoice {p.invoice_no}</Link>
-          <h1 className="font-display text-3xl">Receipt {p.receipt_no}</h1>
+          <h1 className="flex flex-wrap items-center gap-3 font-display text-3xl">
+            Receipt {p.receipt_no}
+            {activeSig && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-3 py-1 font-sans text-xs font-semibold text-teal-800 ring-1 ring-teal-200">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Signed by {activeSig.signerName}
+              </span>
+            )}
+          </h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {!activeSig && can("signatures.manage") && (
+            <Button variant="secondary" onClick={() => setSigning(true)}>
+              <PenTool className="h-4 w-4" /> Sign Receipt
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print</Button>
           <Button onClick={() => {
             if (window.desktop) return void saveAsPdf(pdfName);
-            downloadReceiptPdf(p, s, pdfName);
+            downloadReceiptPdf({ ...p, signature: activeSig }, s, pdfName);
             toast("Receipt PDF downloaded");
           }}><Download className="h-4 w-4" /> Download PDF</Button>
         </div>
@@ -340,10 +384,27 @@ export function ReceiptViewPage() {
             <div><dt className="text-xs text-muted uppercase">Invoice total</dt><dd className="num">{money(p.invoice_total)}</dd></div>
             <div><dt className="text-xs text-muted uppercase">Balance remaining on invoice</dt><dd className="num font-semibold">{money(p.invoice_total - p.invoice_paid)}</dd></div>
           </dl>
-          <Signature s={s} />
+          <RenderedSignatureBlock
+            clinicName={s.clinic.name}
+            showSignature={s.invoice.showSignature}
+            showStamp={s.invoice.showStamp}
+            stampDataUrl={s.clinic.stampDataUrl}
+            signature={activeSig}
+          />
           <p className="mt-10 border-t border-line pt-4 text-center text-xs text-muted">{s.invoice.footerNote}</p>
         </div>
       </div>
+
+      <DocumentSignatureModal
+        open={signing}
+        onClose={() => setSigning(false)}
+        docType="receipt"
+        docId={p.id}
+        docLabel={`Receipt ${p.receipt_no}`}
+        defaultSignerName={s.clinic.signerName || "Sunil Kumar"}
+        defaultQualification={s.clinic.signerQualification || ""}
+        onSigned={(sig) => setSigOverride(sig)}
+      />
     </div>
   );
 }

@@ -353,6 +353,8 @@ export function coreRoutes(ctx: Ctx) {
     if (!cur) throw new HttpError(404, "Invoice not found");
     if (cur.status === "void") throw new HttpError(409, "Void invoices cannot be edited");
     if (cur.paid > 0) throw new HttpError(409, "This invoice has payments. Void it and create a new one instead.");
+    const signed = ctx.db.prepare("SELECT 1 FROM document_signatures WHERE doc_type = 'invoice' AND doc_id = ? LIMIT 1").get(iid);
+    if (signed) throw new HttpError(409, "This invoice has been signed and locked against silent modification. Void and re-issue if needed.");
     const t = computeItems(d.items);
     ctx.db.transaction(() => {
       ctx.db

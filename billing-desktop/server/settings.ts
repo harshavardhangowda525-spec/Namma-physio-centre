@@ -10,11 +10,22 @@ export const settingsSchema = z.object({
     email: z.string().max(120),
     gstin: z.string().max(20),
     registrationNote: z.string().max(200),
-    logoDataUrl: z.string().max(700_000).nullable(), // small PNG/JPEG stored inline
+    logoDataUrl: z.string().max(700_000).nullable(),
+    stampDataUrl: z.string().max(700_000).nullable().optional().default(null),
+    signerName: z.string().max(120).optional().default("Sunil Kumar"),
+    signerQualification: z.string().max(160).optional().default(""),
   }),
   invoice: z.object({
     prefix: z.string().min(1).max(12).regex(/^[A-Za-z0-9-]+$/, "Letters, numbers and hyphens only"),
     receiptPrefix: z.string().min(1).max(12).regex(/^[A-Za-z0-9-]+$/, "Letters, numbers and hyphens only"),
+    detailedBillPrefix: z
+      .string()
+      .min(1)
+      .max(16)
+      .regex(/^[A-Za-z0-9-]+$/, "Letters, numbers and hyphens only")
+      .optional()
+      .default("NPC-DB"),
+    defaultSessionChargePaise: z.number().int().min(0).max(10_000_000).optional().default(120_000),
     padding: z.number().int().min(3).max(8),
     resetEachFinancialYear: z.boolean(),
     footerNote: z.string().max(500),
@@ -47,7 +58,7 @@ export type Settings = z.infer<typeof settingsSchema>;
 
 export const defaultSettings: Settings = {
   clinic: {
-    name: "Namma Physio Centre",
+    name: "Namma Physiotherapy Centre",
     tagline: "Physiotherapy & Rehabilitation",
     address: "1st Cross, No. 5, Jambusawari Dinne Main Road, Kothnur, Royal County, 8th Phase, J. P. Nagar, Bengaluru, Karnataka 560083",
     phone: "+91 99164 53616",
@@ -55,22 +66,26 @@ export const defaultSettings: Settings = {
     gstin: "",
     registrationNote: "",
     logoDataUrl: null,
+    stampDataUrl: null,
+    signerName: "Sunil Kumar",
+    signerQualification: "",
   },
   invoice: {
     prefix: "NPC",
     receiptPrefix: "RCPT",
+    detailedBillPrefix: "NPC-DB",
+    defaultSessionChargePaise: 120_000, // ₹1,200 default session charge
     padding: 4,
     resetEachFinancialYear: true,
-    footerNote: "Thank you for choosing Namma Physio Centre. Wishing you a smooth recovery.",
-    terms: "This is a computer-generated document.",
+    footerNote: "Thank you for choosing Namma Physiotherapy Centre. Wishing you a smooth recovery.",
+    terms: "This is a computer-generated physiotherapy billing document.",
     showSignature: true,
     showStamp: true,
     defaultFormat: "a4",
   },
-  // Many healthcare services are GST-exempt; tax is OFF by default. Confirm with your accountant.
   tax: { enabled: false, label: "GST", defaultRateBp: 0, note: "" },
   paymentMethods: ["Cash", "UPI", "Bank transfer", "Card"],
-  physiotherapists: ["Dr. Sunil Kumar"],
+  physiotherapists: ["Sunil Kumar"],
   backup: { schedule: "daily", dailyTime: "20:00", destinations: [], keep: 30, encrypt: true },
   privacy: { retentionYears: 7 },
 };
@@ -81,7 +96,6 @@ export function getSettings(db: DB): Settings {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(KEY) as { value: string } | undefined;
   if (!row) return structuredClone(defaultSettings);
   const stored = JSON.parse(row.value);
-  // Deep-merge with defaults so new settings keys get sensible values after upgrades.
   const merged = Object.fromEntries(
     Object.entries(defaultSettings).map(([k, v]) => [k, Array.isArray(v) ? stored[k] ?? v : { ...(v as object), ...(stored[k] ?? {}) }]),
   );
@@ -98,6 +112,7 @@ export function getKV(db: DB, key: string): string | null {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;
   return row?.value ?? null;
 }
+
 export function setKV(db: DB, key: string, value: string | null) {
   if (value === null) db.prepare("DELETE FROM settings WHERE key = ?").run(key);
   else db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);

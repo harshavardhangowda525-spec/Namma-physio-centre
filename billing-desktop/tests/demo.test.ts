@@ -56,4 +56,58 @@ describe("isolated demo backend", () => {
     const afterReset = await demoApi<{ total: number }>("GET", "/patients");
     expect(afterReset.total).toBe(10);
   });
+
+  it("supports Detailed Physiotherapy Bills, handwritten signatures, RBAC and revisions in demo mode", async () => {
+    resetDemoState();
+    const list = await demoApi<{ total: number; items: { id: number; status: string }[] }>("GET", "/detailed-bills");
+    expect(list.total).toBe(1);
+
+    const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const billId = list.items[0].id;
+
+    // Explicit confirmation is required
+    await expect(
+      demoApi("POST", `/documents/detailed_bill/${billId}/sign`, {
+        mode: "drawn",
+        imageDataUrl: png,
+        signerName: "Sunil Kumar",
+        confirmAuthorization: false,
+      }),
+    ).rejects.toBeInstanceOf(DemoApiError);
+
+    // Authorized signing locks the bill
+    const signed = await demoApi<{ signature: { signerName: string; docVersion: number } }>(
+      "POST",
+      `/documents/detailed_bill/${billId}/sign`,
+      {
+        mode: "drawn",
+        imageDataUrl: png,
+        signerName: "Sunil Kumar",
+        saveForReuse: true,
+        confirmAuthorization: true,
+      },
+    );
+    expect(signed.signature.signerName).toBe("Sunil Kumar");
+
+    // Signed bill cannot be edited directly
+    await expect(
+      demoApi("PUT", `/detailed-bills/${billId}`, {
+        patientId: 1,
+        patientName: "Raghavendra Rao",
+        treatmentStartDate: "2026-01-01",
+        treatmentEndDate: "2026-12-31",
+        billDate: "2026-06-01",
+        sessions: [{ sessionDate: "2026-06-01", amount: 120_000 }],
+      }),
+    ).rejects.toBeInstanceOf(DemoApiError);
+
+    // Revision creates v2 draft and supersedes v1
+    const rev = await demoApi<{ id: number; version: number; status: string }>("POST", `/detailed-bills/${billId}/revise`);
+    expect(rev.version).toBe(2);
+    expect(rev.status).toBe("draft");
+
+    // Reception cannot manage or apply clinician signatures
+    await demoApi("POST", "/demo/switch-role", { role: "reception" });
+    await expect(demoApi("GET", "/signatures/me")).rejects.toBeInstanceOf(DemoApiError);
+  });
 });

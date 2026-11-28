@@ -173,8 +173,8 @@ export async function syncGoogleReviewsNow(): Promise<{
       const locationPath = await resolveGbpLocation(auth.accessToken, auth.cred.locationName);
 
       const collected: SyncedReviewInput[] = [];
-      let averageRating = clinic.google.rating;
-      let totalReviewCount = clinic.google.reviewCount;
+      let averageRating: number = clinic.google.rating;
+      let totalReviewCount: number = clinic.google.reviewCount;
       let pageToken = "";
       let pages = 0;
 

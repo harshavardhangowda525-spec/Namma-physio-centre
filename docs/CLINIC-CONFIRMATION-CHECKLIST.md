@@ -1,57 +1,36 @@
 # Clinic information still requiring confirmation
 
-Nothing below is published as fact until the clinic confirms it. Each item says where to update it once confirmed.
+Nothing below is published as verified fact until the clinic confirms it. Each item documents its current honest state and exact update location.
 
-## Doctor & clinic facts
-| Item | Current state on site | Update in |
+## 1. Practitioner & Clinic Credentials
+| Item | Current state on site | Notes / Update location |
 |---|---|---|
-| Dr. Sunil Kumar's qualifications | Shown as "To be confirmed" | `website/src/content/clinic.ts` → `doctor.qualifications` |
-| Years of experience | Shown as "To be confirmed" | `doctor.experience` |
-| Professional registration number (if it should be shown) | Not shown | `doctor.registration` |
-| Areas of treatment beyond knee / meniscus / MPFL / post-surgical / knee replacement | Only these are listed (from reviews and supplied info) | `doctor.areasOfTreatment` |
-| Clinic history, founding year, team members | Not stated anywhere | About page copy |
-| Mission & care philosophy copy | **Draft**, needs client approval | `website/src/app/about/page.tsx` |
-| Privacy Policy and Terms of Use | **Draft**, needs legal review | `website/src/app/privacy`, `website/src/app/terms` |
+| Years of clinical experience | **Published: `8+ Years`** (confirmed in client brief) | `website/src/content/clinic.ts` → `doctor.experienceYears` / homepage stats |
+| Sunil Kumar's formal degree(s) (e.g. BPT / MPT) | Shown as **"Pending clinic certificate verification"** | `website/src/content/clinic.ts` → `doctor.qualifications`. **Important discrepancy**: a third-party KiviHealth listing claims *"BPT, 20+ years experience, Reg: BLU02726ALCOC"*, which contradicts the client-confirmed `8+ years` and was therefore **not** used. Verify directly from certificates. |
+| Professional council registration number (e.g. KSCPT / IAP) | Not shown (`null`) | `website/src/content/clinic.ts` → `doctor.registration` & `billing-desktop` Settings → *Verified qualification* |
+| Practitioner portrait & real clinic photographs | Honest placeholder / labelled rehabilitation illustrations | `website/public/images/site/` & `website/src/content/clinic.ts` → `doctor.photo` |
+| Full weekly operating hours & closed days | Partial (Saturday break + 3 PM reopen noted; `hoursConfirmed: false`) | `website/src/content/clinic.ts` → `clinic.hours` & `website/src/content/booking.ts` |
 
-## Operating hours
-- [ ] Full weekly opening hours. The only thing known is a Saturday afternoon break with reopening at 3 PM. Set `clinic.hours` and `clinic.hoursConfirmed = true`.
-- [ ] Closed days. Set `closedWeekdays` in `website/src/content/booking.ts`.
-- [ ] Preferred-time options for the booking form, to match real hours (`preferredTimes`).
+## 2. Clinical Services & Proposed Conditions Sign-Off
+The website publishes **11 services** (`website/src/content/services.ts`), with **7 featured cards** on the homepage (including *Sports Injury Rehabilitation*). Unconfirmed condition items are transparently flagged in `proposedConditions`:
 
-## Contact
-- [ ] Is **+91 99164 53616** on WhatsApp? The WhatsApp button is shown but `whatsappConfirmed` is `false`.
-- [ ] Clinic email address (optional).
-- [ ] Official social media profiles. None are shown until verified (`clinic.social`).
-- [ ] Exact map pin / Google Place ID (needed for live reviews).
+- [ ] **Neurological Rehabilitation (`neurological-rehabilitation`)**: Confirm clinical scope for the 6 listed conditions (*Stroke-related mobility limitations*, *Parkinson's disease-related movement difficulties*, *Neurological weakness*, *Balance and coordination difficulties*, *Gait disturbances*, *Reduced functional mobility*). No formal neurological specialist certification is claimed.
+- [ ] **Post-Surgical Rehabilitation (`post-surgical-rehabilitation`)**: Confirm wording of item #1 (*"Post Total Knee Replacement (TKR) and Partial Knee Replacement (PKR) Rehabilitation"*) and retention of *Post-Orthopaedic Surgery Rehabilitation* and *Post-Ligament Repair Rehabilitation*.
+- [ ] **Knee Injury Rehabilitation (`knee-injury-rehabilitation`)**: Confirm the 4 retained arthritis conditions (*Knee Osteoarthritis*, *Rheumatoid Arthritis affecting the knee*, *Degenerative Knee Joint Conditions*, *Arthritis-related Knee Pain*). Note: the previous final two items (*Knee Joint Stiffness* and *Arthritis-related Mobility Limitations*) were removed per client instructions.
+- [ ] **Sports Injury Rehabilitation (`sports-injury-rehabilitation`)**: Confirm full condition list (*Sports-related ligament problems*, *Meniscus injuries*, *Muscle and tendon injuries*, *Overuse injuries*, *Sports-related joint injuries*, *Movement and mobility limitations following sports injuries*).
+- [ ] **Website Insurance Information Section** (if desired on public website): Confirm reimbursement wording and documents provided before publishing any public insurance copy (never claim cashless tie-ups unless verified).
 
-## Services
-The website currently publishes **10 approved services** (`verified: true, published: true` in `website/src/content/services.ts`). Another 7 services in the proposed catalogue remain hidden (`verified: false, published: false`):
+## 3. Branding & Developer Attribution Decisions
+- [ ] **Clinic Logo Concept Approval**: Review the 3 original vector/PNG logo suites on `/brand-concepts` (`concept-1-kinetic-spine`, `concept-2-guided-motion`, `concept-3-vital-balance`). Live website keeps the existing mark until one concept is approved.
+- [ ] **Expanded Developer Promotional Line**: Footer currently displays the discreet attribution *"Designed & Developed by Infinity Web & Apps — Websites. Mobile Apps. Digital Growth."* (`https://infinity-web-apps.vercel.app`). Set `NEXT_PUBLIC_SHOW_EXPANDED_DEV_CTA=true` only if the clinic owner approves the expanded promotional CTA.
 
-Orthopaedic Physiotherapy · Neurological Physiotherapy · Geriatric Physiotherapy · Mobility & Balance Training · Posture & Ergonomic Guidance · Strengthening & Conditioning · Chronic Pain Rehabilitation
+## 4. Live Google & Gmail OAuth Authorizations
+- [ ] **Gmail Appointment Notifications (`Smilewithsidhu2008@gmail.com`)**: Complete one-time Google OAuth consent on `/admin` → **Connect Gmail** so doctor approval emails and patient confirmation emails send directly from `Smilewithsidhu2008@gmail.com`.
+- [ ] **Google Calendar Sync (Optional)**: Complete one-time OAuth consent on `/admin` → **Connect Google Calendar**.
+- [ ] **Dynamic Google Reviews**: Complete Google Business Profile OAuth on `/admin` → **Connect Google Reviews** (full dynamic review sync) or supply `GOOGLE_PLACES_API_KEY` + `GOOGLE_PLACE_ID` (live rating, total count, and Google's 5-review Places cap).
 
-- [ ] Confirm which of the remaining 7 proposed services the clinic offers, approve the copy, then set both flags to `true`.
-- [ ] **Post-Surgical Rehabilitation — confirm proposed additional conditions** (joint replacement TJR/TKR/THR, fracture, fracture fixation, trauma, and post-operative stiffness were specifically requested; confirm whether to retain *Post-Orthopaedic Surgery Rehabilitation*, *Post-ACL Reconstruction Rehabilitation*, *Post-Ligament Repair Rehabilitation*, and *Post-Arthroscopic Surgery Rehabilitation*).
-- [ ] **Knee Injury Rehabilitation — confirm arthritis-related knee conditions** (*Knee Osteoarthritis*, *Rheumatoid Arthritis affecting the knee*, *Degenerative Knee Joint Conditions*, *Arthritis-related Knee Pain*, *Knee Joint Stiffness*, *Arthritis-related Mobility Limitations*) and whether the clinic would like the card title updated to *Knee Pain & Injury Rehabilitation*.
-- [x] **Insurance document received**: a sample Detailed Physiotherapy Bill. Its format is now in the billing app. Confirm the default charge per session (Rs. 1,000 in the sample) and whether "Referred by" should be mandatory.
-- [ ] **Website insurance section**: confirm the reimbursement process the clinic supports, the documents provided (detailed bill, receipts, prescription/referral) and the FAQ answers before anything is published. No cashless or insurer-tie-up claims.
-- [ ] Home-visit coverage area (localities / PIN codes) and charges.
-
-## Photography (illustrations currently labelled illustrative; real photos pending)
-- [ ] Hero treatment photograph
-- [ ] Portrait of Dr. Sunil Kumar (must be the real doctor; never a stock model)
-- [ ] Reception, treatment rooms, equipment, a rehabilitation session, doctor & team
-- [ ] One photo per published service (optional; icons are used until then)
-- [ ] Clinic logo (the current mark is a proposal)
-- [ ] Written consent from any patient who appears in a photo
-
-## Reviews
-- [ ] Google Places API key and Place ID, so the live rating, count and up to 5 review texts can load.
-- [ ] If the owner wants more reviews on the site: an **authorised** export (e.g. from Google Business Profile), imported with `npm run reviews:import`.
-- [ ] Permission to show the three supplied review summaries (Shalini Kumari, Sagar S. Acharya, Rino Davis). They are labelled "summary, not a direct quote".
-
-## Billing app
-- [ ] Is the clinic GST-registered? Which services, if any, are taxable? (Tax is **off** by default.)
-- [ ] Invoice prefix and starting number (default `NPC/2026-27/0001`).
-- [ ] Service price list for the catalogue.
-- [ ] Record-retention period agreed with the clinic's accountant (default 7 years).
-- [ ] An external USB drive for backups, and who keeps the backup passphrase.
+## 5. Billing Software (`billing-desktop/`)
+- [x] **Detailed Physiotherapy Bill format & ₹1,200 default session charge**: Implemented matching `Namma Physio Invoice CN - Mar 16 to May 14_Updated.docx` (37 sessions @ ₹1,200 = ₹44,400). Adjustable anytime in **Settings → Invoices & tax**.
+- [ ] **Optional Clinic Stamp**: Upload transparent PNG/JPEG clinic seal in **Settings → Clinic → Clinic Stamp (Optional)** if desired on signed PDFs.
+- [ ] **GST & Retention Settings**: Tax remains **off** by default; confirm with clinic accountant if GSTIN or retention period (default 7 years) needs adjustment.
+- [ ] **Windows PC Pairing & External USB Backup**: Pair **Appointment Inquiries** once on the clinic PC and add an external USB backup folder + passphrase.

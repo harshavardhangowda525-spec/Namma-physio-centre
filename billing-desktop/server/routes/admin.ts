@@ -91,15 +91,16 @@ export function adminRoutes(ctx: Ctx) {
     const s = settingsSchema.parse(req.body);
     s.paymentMethods = [...new Set(s.paymentMethods.map((m) => m.trim()).filter(Boolean))];
     if (s.clinic.logoDataUrl && !/^data:image\/(png|jpeg|webp);base64,/.test(s.clinic.logoDataUrl)) throw new HttpError(400, "Logo must be a PNG, JPEG or WebP image");
+    if (s.clinic.stampDataUrl && !/^data:image\/(png|jpeg|webp);base64,/.test(s.clinic.stampDataUrl)) throw new HttpError(400, "Clinic stamp must be a PNG, JPEG or WebP image");
     for (const d of s.backup.destinations) if (d && !path.isAbsolute(d)) throw new HttpError(400, `Backup folder must be a full path: ${d}`);
     saveSettings(ctx.db, s);
     audit(ctx.db, req.user!, "settings.update", "settings", null);
     res.json(s);
   });
 
-  /** Sets the invoice/receipt counter (e.g. when migrating from a paper register). */
+  /** Sets the invoice/receipt/detailed_bill counter (e.g. when migrating from a paper register). */
   r.post("/settings/counters", requirePerm("settings.write"), (req, res) => {
-    const d = z.object({ kind: z.enum(["invoice", "receipt"]), scope: z.string().regex(/^(all|\d{4}-\d{2})$/), nextNumber: z.number().int().min(1).max(9_999_999) }).parse(req.body);
+    const d = z.object({ kind: z.enum(["invoice", "receipt", "detailed_bill"]), scope: z.string().regex(/^(all|\d{4}-\d{2})$/), nextNumber: z.number().int().min(1).max(9_999_999) }).parse(req.body);
     const key = `seq:${d.kind}:${d.scope}`;
     ctx.db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, String(d.nextNumber - 1));
     audit(ctx.db, req.user!, "settings.counter", "settings", key, d);

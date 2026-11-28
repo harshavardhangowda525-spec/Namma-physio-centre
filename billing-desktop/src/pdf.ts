@@ -1,5 +1,14 @@
 import { jsPDF } from "jspdf";
-import { amountInWords, formatINR } from "../shared/billing";
+import {
+  amountInWords,
+  dayOfWeekName,
+  formatINR,
+  formatRefHeaderDate,
+  formatRefSessionDate,
+  formatRupeeNumber,
+  rupeesInWords,
+} from "../shared/billing";
+import type { DocumentSignatureRecord } from "../shared/types";
 import type { Settings } from "../server/settings";
 
 const NAVY: [number, number, number] = [11, 31, 58];
@@ -13,7 +22,6 @@ const AMBER: [number, number, number] = [180, 83, 9];
 
 const IS_DEMO = import.meta.env.VITE_DEMO_MODE === "true";
 
-/** Formats paise for built-in PDF fonts (ASCII-safe Rs. prefix). */
 function pdfMoney(paise: number | null | undefined, withPrefix = true): string {
   const p = paise ?? 0;
   const neg = p < 0;
@@ -21,7 +29,6 @@ function pdfMoney(paise: number | null | undefined, withPrefix = true): string {
   return `${neg ? "- " : ""}${withPrefix ? "Rs. " : ""}${raw}`;
 }
 
-/** Normalises Unicode punctuation that WinAnsi Helvetica does not encode. */
 function cleanText(input: string | null | undefined): string {
   if (!input) return "";
   return String(input)
@@ -37,16 +44,28 @@ function fmtPdfDate(iso: string | null | undefined): string {
   return isNaN(+d) ? cleanText(iso) : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function tryAddPngOrJpeg(doc: jsPDF, dataUrl: string | null | undefined, x: number, y: number, w: number, h: number) {
+  if (!dataUrl || !dataUrl.startsWith("data:image/")) return false;
+  try {
+    const fmt = dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg") ? "JPEG" : "PNG";
+    doc.addImage(dataUrl, fmt, x, y, w, h, undefined, "FAST");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function drawBrandHeader(doc: jsPDF, s: Settings, x: number, y: number): number {
-  // Vector clinic emblem matching the UI Logo mark
-  doc.setFillColor(...NAVY);
-  doc.roundedRect(x, y, 13, 13, 3, 3, "F");
-  doc.setDrawColor(63, 181, 170);
-  doc.setLineWidth(1.1);
-  doc.line(x + 3.6, y + 9.2, x + 6.5, y + 4.8);
-  doc.line(x + 6.5, y + 4.8, x + 9.4, y + 9.2);
-  doc.setFillColor(92, 200, 224);
-  doc.circle(x + 6.5, y + 3.2, 0.9, "F");
+  if (!tryAddPngOrJpeg(doc, s.clinic.logoDataUrl, x, y, 13, 13)) {
+    doc.setFillColor(...NAVY);
+    doc.roundedRect(x, y, 13, 13, 3, 3, "F");
+    doc.setDrawColor(63, 181, 170);
+    doc.setLineWidth(1.1);
+    doc.line(x + 3.6, y + 9.2, x + 6.5, y + 4.8);
+    doc.line(x + 6.5, y + 4.8, x + 9.4, y + 9.2);
+    doc.setFillColor(92, 200, 224);
+    doc.circle(x + 6.5, y + 3.2, 0.9, "F");
+  }
 
   const tx = x + 16;
   doc.setFont("helvetica", "bold");
@@ -111,40 +130,59 @@ function drawStatusPill(doc: jsPDF, status: string, rightX: number, y: number) {
   doc.text(label, x + 3.5, y);
 }
 
-function drawSignatureAndFooter(doc: jsPDF, s: Settings, startY: number) {
+function drawSignatureAndFooter(
+  doc: jsPDF,
+  s: Settings,
+  startY: number,
+  signature?: DocumentSignatureRecord | null,
+) {
   const pageH = doc.internal.pageSize.getHeight();
-  let y = Math.max(startY + 10, pageH - 54);
-  if (y > pageH - 42) {
+  let y = Math.max(startY + 8, pageH - 58);
+  if (y > pageH - 46) {
     doc.addPage();
-    y = 30;
+    y = 28;
   }
 
   if (s.invoice.showStamp) {
-    doc.setDrawColor(...LINE);
-    doc.setLineDashPattern([1.5, 1.5], 0);
-    doc.circle(30, y + 10, 11, "S");
-    doc.setLineDashPattern([], 0);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...MUTED);
-    doc.text("Clinic Stamp", 30, y + 10.8, { align: "center" });
+    if (!tryAddPngOrJpeg(doc, s.clinic.stampDataUrl, 19, y + 1, 22, 22)) {
+      doc.setDrawColor(...LINE);
+      doc.setLineDashPattern([1.5, 1.5], 0);
+      doc.circle(30, y + 12, 11, "S");
+      doc.setLineDashPattern([], 0);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...MUTED);
+      doc.text("Clinic Stamp", 30, y + 12.8, { align: "center" });
+    }
   }
 
-  if (s.invoice.showSignature) {
+  if (s.invoice.showSignature || signature) {
+    if (signature?.imageDataUrl) {
+      tryAddPngOrJpeg(doc, signature.imageDataUrl, 143, y + 1, 46, 15);
+    }
     doc.setDrawColor(...NAVY);
     doc.setLineWidth(0.4);
-    doc.line(140, y + 15, 194, y + 15);
+    doc.line(138, y + 17, 194, y + 17);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(...NAVY);
-    doc.text("Authorised Signatory", 167, y + 19.5, { align: "center" });
+    doc.text(cleanText(signature ? signature.signerName : "Authorised Signatory"), 166, y + 21.2, { align: "center" });
+
+    let subY = y + 25;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
+    doc.setFontSize(7.4);
     doc.setTextColor(...MUTED);
-    doc.text(`For ${cleanText(s.clinic.name)}`, 167, y + 23.5, { align: "center" });
+    if (signature?.signerQualification) {
+      doc.text(cleanText(signature.signerQualification), 166, subY, { align: "center" });
+      subY += 3.6;
+    }
+    doc.text(cleanText(s.clinic.name), 166, subY, { align: "center" });
+    if (signature?.signedAt) {
+      doc.text(`Date: ${fmtPdfDate(signature.signedAt.slice(0, 10))}`, 166, subY + 3.6, { align: "center" });
+    }
   }
 
-  const fy = pageH - 18;
+  const fy = pageH - 16;
   doc.setDrawColor(...LINE);
   doc.setLineWidth(0.3);
   doc.line(16, fy - 4, 194, fy - 4);
@@ -155,10 +193,13 @@ function drawSignatureAndFooter(doc: jsPDF, s: Settings, startY: number) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.2);
   doc.setTextColor(...MUTED);
-  const terms = [s.invoice.terms ? cleanText(s.invoice.terms) : "", IS_DEMO ? "Sample demonstration document (fictional patient data)" : ""]
+  const terms = [
+    s.invoice.terms ? cleanText(s.invoice.terms) : "",
+    IS_DEMO ? "Sample demonstration document (fictional patient data)" : "",
+  ]
     .filter(Boolean)
     .join("  |  ");
-  if (terms) doc.text(terms, 105, fy + 4.2, { align: "center" });
+  if (terms) doc.text(terms, 105, fy + 4, { align: "center" });
 }
 
 export type PdfInvoiceData = {
@@ -194,6 +235,7 @@ export type PdfInvoiceData = {
     reference: string | null;
     paid_on: string;
   }[];
+  signature?: DocumentSignatureRecord | null;
 };
 
 export function downloadInvoicePdf(data: PdfInvoiceData, s: Settings, fileName: string) {
@@ -203,7 +245,6 @@ export function downloadInvoicePdf(data: PdfInvoiceData, s: Settings, fileName: 
   const balance = isVoid ? 0 : Math.max(0, inv.total - inv.paid);
   const showTax = inv.tax_total > 0;
 
-  // Header
   const headerBottom = drawBrandHeader(doc, s, 16, 16);
 
   doc.setFont("helvetica", "bold");
@@ -227,7 +268,6 @@ export function downloadInvoicePdf(data: PdfInvoiceData, s: Settings, fileName: 
   doc.setLineWidth(0.6);
   doc.line(16, y, 194, y);
 
-  // Patient & Payment summary block
   y += 6;
   doc.setFillColor(251, 250, 247);
   doc.setDrawColor(...LINE);
@@ -278,7 +318,6 @@ export function downloadInvoicePdf(data: PdfInvoiceData, s: Settings, fileName: 
     y += 28;
   }
 
-  // Itemised Charges Table
   y += 5;
   doc.setFillColor(...NAVY);
   doc.roundedRect(16, y, 178, 8, 1.5, 1.5, "F");
@@ -327,7 +366,6 @@ export function downloadInvoicePdf(data: PdfInvoiceData, s: Settings, fileName: 
     y += rowH;
   });
 
-  // Totals & Amount in words
   y += 6;
   if (y > 225) {
     doc.addPage();
@@ -387,7 +425,6 @@ export function downloadInvoicePdf(data: PdfInvoiceData, s: Settings, fileName: 
 
   y = Math.max(notesBottom, ty) + 8;
 
-  // Payments Received Table
   if (payments.length > 0) {
     if (y > 230) {
       doc.addPage();
@@ -425,7 +462,7 @@ export function downloadInvoicePdf(data: PdfInvoiceData, s: Settings, fileName: 
     y += 4;
   }
 
-  drawSignatureAndFooter(doc, s, y);
+  drawSignatureAndFooter(doc, s, y, data.signature);
   doc.save(fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`);
 }
 
@@ -441,6 +478,7 @@ export type PdfReceiptData = {
   patient_name: string;
   patient_code: string;
   received_by_name: string | null;
+  signature?: DocumentSignatureRecord | null;
 };
 
 export function downloadReceiptPdf(p: PdfReceiptData, s: Settings, fileName: string) {
@@ -508,7 +546,7 @@ export function downloadReceiptPdf(p: PdfReceiptData, s: Settings, fileName: str
     doc.text(val, fx, fy + 5.2);
   });
 
-  drawSignatureAndFooter(doc, s, y + 52);
+  drawSignatureAndFooter(doc, s, y + 52, p.signature);
   doc.save(fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`);
 }
 
@@ -521,6 +559,8 @@ export function downloadReportPdf(opts: {
   rows: (string | number)[][];
   rightAlignCols?: number[];
   fileName: string;
+  signature?: DocumentSignatureRecord | null;
+  settings?: Settings;
 }) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   doc.setFont("helvetica", "bold");
@@ -581,7 +621,7 @@ export function downloadReportPdf(opts: {
   drawTableHeader();
 
   opts.rows.forEach((r, idx) => {
-    if (y + 7 > 280) {
+    if (y + 7 > 275) {
       doc.addPage();
       y = 18;
       drawTableHeader();
@@ -600,147 +640,338 @@ export function downloadReportPdf(opts: {
     r.forEach((cell, i) => {
       const right = rightSet.has(i);
       const cx = right ? 16 + (i + 1) * colW - 2.5 : 16 + i * colW + 2.5;
-      const text = cleanText(String(cell ?? "-")).slice(0, 34);
+      const text = cleanText(String(cell ?? "-")).slice(0, 38);
       doc.text(text, cx, y + 4.7, { align: right ? "right" : "left" });
     });
     y += 6.8;
   });
 
+  if (opts.settings && opts.signature) {
+    drawSignatureAndFooter(doc, opts.settings, y + 4, opts.signature);
+  }
   doc.save(opts.fileName.endsWith(".pdf") ? opts.fileName : `${opts.fileName}.pdf`);
 }
 
-/* ------------------------------------------------------------------ */
-/* Detailed Physiotherapy Bill (session-wise statement for insurance   */
-/* reimbursement), following the clinic's own bill format.             */
-/* ------------------------------------------------------------------ */
+/* ============================================================================
+   DETAILED PHYSIOTHERAPY BILL — Reference-Matched Multi-Page A4 Generator
+   Follows client reference `Namma Physio Invoice CN - Mar 16 to May 14_Updated.docx`
+   ============================================================================ */
 
 export type DetailedBillData = {
   billNo: string;
-  billDate: string; // ISO yyyy-mm-dd
+  billDate: string; // YYYY-MM-DD
+  treatmentStartDate?: string; // YYYY-MM-DD
+  treatmentEndDate?: string; // YYYY-MM-DD
   patientName: string;
   ageGender: string;
   referredBy: string;
   sessions: { date: string; particulars: string; amount: number }[]; // amount in paise
+  signature?: DocumentSignatureRecord | null;
 };
 
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-function dayName(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  return isNaN(+d) ? "-" : DAYS[d.getDay()];
+/**
+ * Builds the exact multi-page A4 jsPDF document matching the client's Word reference:
+ * - Times serif typography (11pt)
+ * - Exact 5-column proportions: [18.47%, 15.02%, 13.89%, 35.41%, 17.21%]
+ * - Bordered patient information grid + grey header row (#D4D2D2) repeated on every page
+ * - Dynamic session count & exact Indian numbering ("Amount in Words: Rupees ... Only")
+ * - Professional signature & clinic stamp area below totals
+ */
+export function buildDetailedBillPdfDoc(b: DetailedBillData, s: Settings): jsPDF {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageH = doc.internal.pageSize.getHeight();
+  const leftX = 20;
+  const tableW = 170; // 20mm left & right margins matching 1-inch / reference layout
+
+  // Exact column widths matching docx grid [1569, 1276, 1180, 3008, 1462] (sum = 8495)
+  const wSl = +(tableW * (1569 / 8495)).toFixed(2); // 31.40mm
+  const wDate = +(tableW * (1276 / 8495)).toFixed(2); // 25.54mm
+  const wDay = +(tableW * (1180 / 8495)).toFixed(2); // 23.61mm
+  const wPart = +(tableW * (3008 / 8495)).toFixed(2); // 60.19mm
+  const wAmt = +(tableW - (wSl + wDate + wDay + wPart)).toFixed(2); // 29.26mm
+
+  const xSl = leftX;
+  const xDate = xSl + wSl;
+  const xDay = xDate + wDate;
+  const xPart = xDay + wDay;
+  const xAmt = xPart + wPart;
+  const rightX = leftX + tableW;
+
+  const sessions = [...b.sessions].sort((a, c) => a.date.localeCompare(c.date));
+  const totalPaise = sessions.reduce((acc, r) => acc + r.amount, 0);
+  const startDate = b.treatmentStartDate || sessions[0]?.date || "";
+  const endDate = b.treatmentEndDate || sessions[sessions.length - 1]?.date || "";
+
+  // Subtle clinic header above the reference table so insurance reviewers have verified clinic details
+  doc.setFont("times", "bold");
+  doc.setFontSize(13.5);
+  doc.setTextColor(0, 0, 0);
+  doc.text(cleanText(s.clinic.name).toUpperCase(), 105, 15, { align: "center" });
+  doc.setFont("times", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  const subLine = [s.clinic.address ? cleanText(s.clinic.address) : "", s.clinic.phone ? `Ph: ${cleanText(s.clinic.phone)}` : ""]
+    .filter(Boolean)
+    .join("  |  ");
+  const subWrapped = doc.splitTextToSize(subLine, tableW) as string[];
+  doc.text(subWrapped, 105, 19.5, { align: "center" });
+
+  let y = 20 + subWrapped.length * 3.8 + 2;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.28);
+  doc.setTextColor(0, 0, 0);
+
+  // Row 0: DETAILED PHYSIOTHERAPY BILL (spans cols 1-4 | col 5 cell as in reference TableGrid)
+  const titleH = 8.5;
+  doc.rect(xSl, y, wSl + wDate + wDay + wPart, titleH, "S");
+  doc.rect(xAmt, y, wAmt, titleH, "S");
+  doc.setFont("times", "bold");
+  doc.setFontSize(11.5);
+  doc.text("DETAILED PHYSIOTHERAPY BILL", xSl + 2.5, y + 5.7);
+  y += titleH;
+
+  // Rows 1–7: Patient Information Grid (Cols 1+2 right-aligned bold label | Cols 3+4 centered value | Col 5 cell)
+  const labelW = wSl + wDate;
+  const valW = wDay + wPart;
+  const infoRows: [string, string][] = [
+    ["Name of the patient", b.patientName],
+    ["Patient Age and Gender", b.ageGender || ""],
+    ["Referred by", b.referredBy || ""],
+    ["Treatment Start Date", startDate ? formatRefHeaderDate(startDate) : ""],
+    ["Treatment End Date", endDate ? formatRefHeaderDate(endDate) : ""],
+    ["Bill No.", b.billNo],
+    ["Bill Date", b.billDate ? formatRefHeaderDate(b.billDate) : ""],
+  ];
+
+  const infoH = 7.4;
+  for (const [label, val] of infoRows) {
+    doc.rect(xSl, y, labelW, infoH, "S");
+    doc.rect(xDay, y, valW, infoH, "S");
+    doc.rect(xAmt, y, wAmt, infoH, "S");
+
+    doc.setFont("times", "bold");
+    doc.setFontSize(11);
+    doc.text(label, xDay - 2.2, y + 5, { align: "right" });
+
+    doc.setFont("times", "normal");
+    doc.setFontSize(11);
+    const fitVal = (doc.splitTextToSize(cleanText(val), valW - 4) as string[])[0] ?? "";
+    doc.text(fitVal, xDay + valW / 2, y + 5, { align: "center" });
+    y += infoH;
+  }
+
+  // Row 8: Blank grid spacer row (exact match to R8 in reference docx)
+  const spacerH = 6.5;
+  doc.rect(xSl, y, wSl, spacerH, "S");
+  doc.rect(xDate, y, wDate, spacerH, "S");
+  doc.rect(xDay, y, wDay, spacerH, "S");
+  doc.rect(xPart, y, wPart, spacerH, "S");
+  doc.rect(xAmt, y, wAmt, spacerH, "S");
+  y += spacerH;
+
+  // Shaded 5-column table header (repeated on every page!)
+  const drawSessionHeader = () => {
+    const hh = 8;
+    doc.setFillColor(190, 188, 188);
+    doc.rect(xSl, y, tableW, hh, "FD");
+    doc.line(xDate, y, xDate, y + hh);
+    doc.line(xDay, y, xDay, y + hh);
+    doc.line(xPart, y, xPart, y + hh);
+    doc.line(xAmt, y, xAmt, y + hh);
+
+    doc.setFont("times", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Sl. No", xSl + wSl / 2, y + 5.4, { align: "center" });
+    doc.text("Date", xDate + wDate / 2, y + 5.4, { align: "center" });
+    doc.text("Day", xDay + wDay / 2, y + 5.4, { align: "center" });
+    doc.text("Particulars", xPart + wPart / 2, y + 5.4, { align: "center" });
+    doc.text("Amount (Rs.)", xAmt + 2, y + 5.4);
+    y += hh;
+  };
+
+  drawSessionHeader();
+
+  // Session rows with automatic page breaks and repeated headers
+  const bottomLimit = pageH - 22;
+  sessions.forEach((row, idx) => {
+    const partLines = doc.splitTextToSize(cleanText(row.particulars || "Physiotherapy Charges"), wPart - 4) as string[];
+    const rh = Math.max(7.2, partLines.length * 4.8 + 2.4);
+
+    if (y + rh > bottomLimit) {
+      doc.addPage();
+      y = 20;
+      drawSessionHeader();
+    }
+
+    doc.rect(xSl, y, wSl, rh, "S");
+    doc.rect(xDate, y, wDate, rh, "S");
+    doc.rect(xDay, y, wDay, rh, "S");
+    doc.rect(xPart, y, wPart, rh, "S");
+    doc.rect(xAmt, y, wAmt, rh, "S");
+
+    doc.setFont("times", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
+    doc.text(String(idx + 1), xSl + wSl / 2, y + 5, { align: "center" });
+    doc.text(formatRefSessionDate(row.date), xDate + 2, y + 5);
+    doc.text(dayOfWeekName(row.date), xDay + 2, y + 5);
+    doc.text(partLines, xPart + 2, y + 5);
+    doc.text(formatRupeeNumber(row.amount, false), rightX - 2.2, y + 5, { align: "right" });
+    y += rh;
+  });
+
+  // Ensure Totals + Amount in Words fit cleanly without orphan split
+  const wordsText = `Amount in Words: ${cleanText(rupeesInWords(totalPaise))}`;
+  const wordsLines = doc.splitTextToSize(wordsText, tableW - 5) as string[];
+  const wordsH = Math.max(8.5, wordsLines.length * 5 + 3.5);
+  const totalsBlockH = spacerH + 8 + wordsH;
+
+  if (y + totalsBlockH > bottomLimit) {
+    doc.addPage();
+    y = 20;
+    drawSessionHeader();
+  }
+
+  // Blank spacer row before Total row (matches T2_End_1 in reference docx)
+  doc.rect(xSl, y, wSl, spacerH, "S");
+  doc.rect(xDate, y, wDate, spacerH, "S");
+  doc.rect(xDay, y, wDay, spacerH, "S");
+  doc.rect(xPart, y, wPart, spacerH, "S");
+  doc.rect(xAmt, y, wAmt, spacerH, "S");
+  y += spacerH;
+
+  // Total N sessions row
+  const totH = 8;
+  doc.rect(xSl, y, wSl, totH, "S");
+  doc.rect(xDate, y, wDate, totH, "S");
+  doc.rect(xDay, y, wDay, totH, "S");
+  doc.rect(xPart, y, wPart, totH, "S");
+  doc.rect(xAmt, y, wAmt, totH, "S");
+  doc.setFont("times", "bold");
+  doc.setFontSize(11);
+  doc.text(`Total ${sessions.length} session${sessions.length === 1 ? "" : "s"}`, xSl + wSl / 2, y + 5.4, {
+    align: "center",
+  });
+  doc.text(formatRupeeNumber(totalPaise, true), rightX - 2.2, y + 5.4, { align: "right" });
+  y += totH;
+
+  // Amount in Words row
+  doc.rect(xSl, y, tableW, wordsH, "S");
+  doc.setFont("times", "bold");
+  doc.setFontSize(11);
+  doc.text(wordsLines, xSl + 2.5, y + 5.6);
+  y += wordsH;
+
+  // Signature & Clinic Stamp Block below totals (client-requested enhancement)
+  const sigBlockH = 38;
+  if (y + sigBlockH > pageH - 14) {
+    doc.addPage();
+    y = 24;
+  } else {
+    y += 8;
+  }
+
+  if (s.invoice.showStamp) {
+    if (!tryAddPngOrJpeg(doc, s.clinic.stampDataUrl, leftX + 4, y, 24, 24)) {
+      doc.setDrawColor(150, 150, 150);
+      doc.setLineDashPattern([1.5, 1.5], 0);
+      doc.circle(leftX + 16, y + 12, 11.5, "S");
+      doc.setLineDashPattern([], 0);
+      doc.setFont("times", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(110, 110, 110);
+      doc.text("Clinic Stamp", leftX + 16, y + 12.8, { align: "center" });
+    }
+  }
+
+  const sigCenterX = rightX - 30;
+  if (b.signature?.imageDataUrl) {
+    tryAddPngOrJpeg(doc, b.signature.imageDataUrl, sigCenterX - 24, y, 48, 16);
+  }
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.35);
+  doc.line(sigCenterX - 28, y + 17.5, sigCenterX + 28, y + 17.5);
+
+  doc.setFont("times", "bold");
+  doc.setFontSize(10.5);
+  doc.setTextColor(0, 0, 0);
+  const signerLabel = b.signature?.signerName || s.clinic.signerName || "Sunil Kumar";
+  doc.text(cleanText(signerLabel), sigCenterX, y + 22, { align: "center" });
+
+  let metaY = y + 26.2;
+  doc.setFont("times", "normal");
+  doc.setFontSize(9.2);
+  const qual = b.signature?.signerQualification || s.clinic.signerQualification || "";
+  if (qual) {
+    doc.text(cleanText(qual), sigCenterX, metaY, { align: "center" });
+    metaY += 4;
+  }
+  doc.text(cleanText(s.clinic.name), sigCenterX, metaY, { align: "center" });
+  metaY += 4;
+  if (b.signature?.signedAt) {
+    doc.text(`Signed Date: ${formatRefHeaderDate(b.signature.signedAt.slice(0, 10))}`, sigCenterX, metaY, {
+      align: "center",
+    });
+  }
+
+  if (IS_DEMO) {
+    doc.setFont("times", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text("Sample demonstration document (fictional patient data)", 105, pageH - 8, { align: "center" });
+  }
+
+  return doc;
 }
 
 export function downloadDetailedBillPdf(b: DetailedBillData, s: Settings, fileName: string) {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const pageH = doc.internal.pageSize.getHeight();
-  const sessions = [...b.sessions].sort((x, y) => x.date.localeCompare(y.date));
-  const total = sessions.reduce((a, r) => a + r.amount, 0);
+  const doc = buildDetailedBillPdfDoc(b, s);
+  doc.save(fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`);
+}
 
-  const headerBottom = drawBrandHeader(doc, s, 16, 16);
-  let y = Math.max(headerBottom + 5, 42);
-  doc.setDrawColor(...NAVY);
-  doc.setLineWidth(0.6);
-  doc.line(16, y, 194, y);
+export function generateDetailedBillPdfFile(b: DetailedBillData, s: Settings, fileName: string): File {
+  const doc = buildDetailedBillPdfDoc(b, s);
+  const cleanName = fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`;
+  const blob = doc.output("blob");
+  return new File([blob], cleanName, { type: "application/pdf" });
+}
 
-  y += 9;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(...NAVY);
-  doc.text("DETAILED PHYSIOTHERAPY BILL", 105, y, { align: "center" });
-
-  // Patient / bill information grid
-  y += 6;
-  const info: [string, string][] = [
-    ["Name of the patient", b.patientName],
-    ["Patient Age and Gender", b.ageGender || "-"],
-    ["Referred by", b.referredBy || "-"],
-    ["Treatment Start Date", sessions[0] ? fmtPdfDate(sessions[0].date) : "-"],
-    ["Treatment End Date", sessions.length ? fmtPdfDate(sessions[sessions.length - 1].date) : "-"],
-    ["Bill No.", b.billNo],
-    ["Bill Date", fmtPdfDate(b.billDate)],
-  ];
-  const rowH = 7;
-  doc.setLineWidth(0.25);
-  doc.setDrawColor(...LINE);
-  info.forEach(([k, v], i) => {
-    const ry = y + i * rowH;
-    if (i % 2 === 0) {
-      doc.setFillColor(...TEAL_SOFT);
-      doc.rect(16, ry, 178, rowH, "F");
-    }
-    doc.rect(16, ry, 178, rowH, "S");
-    doc.line(76, ry, 76, ry + rowH);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(...NAVY);
-    doc.text(k, 19, ry + 4.8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...INK);
-    doc.text(cleanText(v), 79, ry + 4.8);
-  });
-  y += info.length * rowH + 7;
-
-  // Session table
-  const cols = { sl: 16, date: 32, day: 62, part: 92, amt: 194 };
-  const drawHead = () => {
-    doc.setFillColor(...NAVY);
-    doc.rect(16, y, 178, 8, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(255, 255, 255);
-    doc.text("Sl. No", cols.sl + 2.5, y + 5.3);
-    doc.text("Date", cols.date + 2, y + 5.3);
-    doc.text("Day", cols.day + 2, y + 5.3);
-    doc.text("Particulars", cols.part + 2, y + 5.3);
-    doc.text("Amount (Rs.)", cols.amt - 2.5, y + 5.3, { align: "right" });
-    y += 8;
+/**
+ * Shares a generated PDF file via the smartphone's native share sheet (e.g. WhatsApp)
+ * when supported by the browser/OS, or downloads the PDF cleanly with an honest fallback.
+ */
+export async function shareOrDownloadPdfFile(opts: {
+  file: File;
+  title: string;
+}): Promise<{ method: "native_share" | "downloaded" | "cancelled" }> {
+  const nav = navigator as Navigator & {
+    canShare?: (data?: ShareData) => boolean;
   };
-  drawHead();
-  const lineH = 6.4;
-  sessions.forEach((r, i) => {
-    if (y + lineH > pageH - 60) {
-      doc.addPage();
-      y = 20;
-      drawHead();
+
+  if (typeof nav.share === "function" && typeof nav.canShare === "function") {
+    try {
+      if (nav.canShare({ files: [opts.file] })) {
+        await nav.share({
+          files: [opts.file],
+          title: opts.title,
+        });
+        return { method: "native_share" };
+      }
+    } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        return { method: "cancelled" };
+      }
+      // Fall through to reliable download fallback
     }
-    if (i % 2 === 1) {
-      doc.setFillColor(250, 248, 243);
-      doc.rect(16, y, 178, lineH, "F");
-    }
-    doc.setDrawColor(...LINE);
-    doc.line(16, y + lineH, 194, y + lineH);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.8);
-    doc.setTextColor(...INK);
-    doc.text(String(i + 1), cols.sl + 2.5, y + 4.4);
-    doc.text(fmtPdfDate(r.date), cols.date + 2, y + 4.4);
-    doc.text(dayName(r.date), cols.day + 2, y + 4.4);
-    doc.text(cleanText(r.particulars), cols.part + 2, y + 4.4);
-    doc.text(pdfMoney(r.amount, false), cols.amt - 2.5, y + 4.4, { align: "right" });
-    y += lineH;
-  });
+  }
 
-  // Total row
-  doc.setFillColor(...TEAL_SOFT);
-  doc.rect(16, y, 178, 8.5, "F");
-  doc.setDrawColor(...TEAL);
-  doc.setLineWidth(0.5);
-  doc.line(16, y, 194, y);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.setTextColor(...NAVY);
-  doc.text(`Total ${sessions.length} session${sessions.length === 1 ? "" : "s"}`, cols.sl + 2.5, y + 5.6);
-  doc.text(pdfMoney(total), cols.amt - 2.5, y + 5.6, { align: "right" });
-  y += 13;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...NAVY);
-  doc.text("Amount in Words:", 16, y);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...INK);
-  doc.text(cleanText(amountInWords(total)), 46, y, { maxWidth: 148 });
-  y += 6;
-
-  drawSignatureAndFooter(doc, s, y);
-  doc.save(fileName);
+  const url = URL.createObjectURL(opts.file);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = opts.file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return { method: "downloaded" };
 }

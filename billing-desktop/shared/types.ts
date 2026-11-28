@@ -13,6 +13,9 @@ export const PERMISSIONS = {
   "appointments.read": ["admin", "physiotherapist", "reception"],
   "appointments.write": ["admin", "physiotherapist", "reception"],
   "inquiries.read": ["admin", "physiotherapist", "reception"],
+  "detailed_bills.read": ["admin", "physiotherapist", "reception"],
+  "detailed_bills.write": ["admin", "physiotherapist", "reception"],
+  "signatures.manage": ["admin", "physiotherapist"],
   "reports.read": ["admin"],
   "dashboard.financial": ["admin"],
   "settings.write": ["admin"],
@@ -62,4 +65,80 @@ export type InquirySyncStatus = {
   lastAttemptAt: string | null;
   lastError: string | null;
   totalInquiries: number;
+};
+
+export type SignableDocumentType = "invoice" | "receipt" | "detailed_bill" | "session_statement";
+
+export type SavedSignatureInfo = {
+  hasSaved: boolean;
+  signerName: string;
+  signerQualification: string;
+  imageDataUrl: string | null;
+  updatedAt: string | null;
+};
+
+export type DocumentSignatureRecord = {
+  id: number;
+  docType: SignableDocumentType;
+  docId: number;
+  docNo: string;
+  docVersion: number;
+  payloadSha256: string;
+  imageDataUrl: string;
+  signerUserId: number;
+  signerUsername: string;
+  signerName: string;
+  signerQualification: string;
+  signedAt: string;
+};
+
+export type DetailedBillStatus =
+  | "draft"
+  | "ready_for_signature"
+  | "signed"
+  | "finalized"
+  | "shared"
+  | "cancelled"
+  | "superseded";
+
+export type DetailedBillSessionRow = {
+  id?: number;
+  slNo: number;
+  sessionDate: string;
+  dayName: string;
+  particulars: string;
+  amount: number; // paise
+  sourceAppointmentId: number | null;
+};
+
+export type DetailedBillSummary = {
+  id: number;
+  billNo: string;
+  version: number;
+  parentBillId: number | null;
+  supersededById: number | null;
+  patientId: number;
+  patientCode: string;
+  patientPhone: string | null;
+  patientName: string;
+  patientAgeGender: string;
+  referredBy: string;
+  treatmentStartDate: string;
+  treatmentEndDate: string;
+  billDate: string;
+  defaultCharge: number;
+  totalSessions: number;
+  totalAmount: number;
+  amountInWords: string;
+  status: DetailedBillStatus;
+  signedAt: string | null;
+  sharedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DetailedBillFull = DetailedBillSummary & {
+  sessions: DetailedBillSessionRow[];
+  signature: DocumentSignatureRecord | null;
 };

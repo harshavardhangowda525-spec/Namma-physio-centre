@@ -71,13 +71,25 @@ export function rupeesToPaise(input: string | number): number | null {
   return Number(r) * 100 + Number((p + "00").slice(0, 2));
 }
 
-export function formatINR(paise: number, opts: { symbol?: boolean } = {}) {
+export function formatINR(paise: number, opts: { symbol?: boolean; decimals?: boolean } = {}) {
   const neg = paise < 0;
   const abs = Math.abs(paise);
   const rupees = Math.floor(abs / 100);
-  const p = String(abs % 100).padStart(2, "0");
+  const rem = abs % 100;
   const grouped = rupees.toLocaleString("en-IN");
-  return `${neg ? "-" : ""}${opts.symbol === false ? "" : "₹"}${grouped}.${p}`;
+  const showDecimals = opts.decimals ?? true;
+  const dec = showDecimals || rem > 0 ? `.${String(rem).padStart(2, "0")}` : "";
+  return `${neg ? "-" : ""}${opts.symbol === false ? "" : "₹"}${grouped}${dec}`;
+}
+
+/** Formats integer rupees cleanly as in the reference document (e.g. 1200 or 44,400, with .50 only if paise > 0). */
+export function formatRupeeNumber(paise: number, grouped = true): string {
+  const neg = paise < 0;
+  const abs = Math.abs(paise);
+  const rupees = Math.floor(abs / 100);
+  const rem = abs % 100;
+  const base = grouped ? rupees.toLocaleString("en-IN") : String(rupees);
+  return `${neg ? "-" : ""}${base}${rem > 0 ? `.${String(rem).padStart(2, "0")}` : ""}`;
 }
 
 /** Indian financial year label (April–March), e.g. 2026-11-21 → "2026-27". */
@@ -91,8 +103,7 @@ export function formatDocNumber(prefix: string, fy: string | null, seq: number, 
   return [prefix, fy, String(seq).padStart(pad, "0")].filter(Boolean).join("/");
 }
 
-/** Amount in words (Indian numbering) for invoices, e.g. "One Thousand Two Hundred Rupees and Fifty Paise Only". */
-export function amountInWords(paise: number): string {
+function indianWordsCore(paise: number): { rupeeWords: string; paiseWords: string | null } {
   const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
   const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
   const two = (n: number) => (n < 20 ? ones[n] : `${tens[Math.floor(n / 10)]}${n % 10 ? " " + ones[n % 10] : ""}`);
@@ -116,5 +127,129 @@ export function amountInWords(paise: number): string {
   };
   const r = Math.floor(Math.abs(paise) / 100);
   const p = Math.abs(paise) % 100;
-  return `${words(r)} Rupees${p ? ` and ${two(p)} Paise` : ""} Only`;
+  return { rupeeWords: words(r), paiseWords: p ? two(p) : null };
+}
+
+/** Amount in words (Indian numbering) for invoices, e.g. "One Thousand Two Hundred Rupees and Fifty Paise Only". */
+export function amountInWords(paise: number): string {
+  const { rupeeWords, paiseWords } = indianWordsCore(paise);
+  return `${rupeeWords} Rupees${paiseWords ? ` and ${paiseWords} Paise` : ""} Only`;
+}
+
+/**
+ * Exact Detailed Physiotherapy Bill wording matching the client's reference document:
+ * e.g. 4440000 paise (₹44,400) -> "Rupees Forty Four Thousand Four Hundred Only".
+ */
+export function rupeesInWords(paise: number): string {
+  const { rupeeWords, paiseWords } = indianWordsCore(paise);
+  return `Rupees ${rupeeWords}${paiseWords ? ` and ${paiseWords} Paise` : ""} Only`;
+}
+
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+export function isValidIsoDate(iso: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+export function dayOfWeekName(isoDate: string): string {
+  if (!isValidIsoDate(isoDate)) return "-";
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
+/** Formats YYYY-MM-DD as "16-Mar-26" or "1-Apr-26" matching the reference session table. */
+export function formatRefSessionDate(isoDate: string): string {
+  if (!isValidIsoDate(isoDate)) return isoDate;
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return `${d}-${SHORT_MONTHS[m - 1]}-${String(y).slice(-2)}`;
+}
+
+/** Formats YYYY-MM-DD as "16-Mar-2026" matching the reference header table. */
+export function formatRefHeaderDate(isoDate: string): string {
+  if (!isValidIsoDate(isoDate)) return isoDate;
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return `${String(d).padStart(2, "0")}-${SHORT_MONTHS[m - 1]}-${y}`;
+}
+
+export type DetailedBillSessionInput = {
+  sessionDate: string;
+  particulars?: string;
+  amount: number; // integer paise
+  sourceAppointmentId?: number | null;
+};
+
+export type DetailedBillCalculated = {
+  sessions: {
+    slNo: number;
+    sessionDate: string;
+    dayName: string;
+    particulars: string;
+    amount: number;
+    sourceAppointmentId: number | null;
+  }[];
+  totalSessions: number;
+  totalAmount: number;
+  amountInWords: string;
+};
+
+/** Validates and computes exact integer-paise totals and Indian amount-in-words for a Detailed Physiotherapy Bill. */
+export function calcDetailedBill(
+  rawSessions: DetailedBillSessionInput[],
+  opts?: { treatmentStartDate?: string; treatmentEndDate?: string },
+): DetailedBillCalculated {
+  if (!rawSessions.length) throw new BillingError("Select at least one treatment session date");
+
+  if (opts?.treatmentStartDate && opts?.treatmentEndDate) {
+    if (!isValidIsoDate(opts.treatmentStartDate) || !isValidIsoDate(opts.treatmentEndDate)) {
+      throw new BillingError("Enter valid treatment start and end dates");
+    }
+    if (opts.treatmentEndDate < opts.treatmentStartDate) {
+      throw new BillingError("Treatment end date cannot be earlier than treatment start date");
+    }
+  }
+
+  const sorted = [...rawSessions].sort((a, b) => a.sessionDate.localeCompare(b.sessionDate));
+  const seenAppointmentIds = new Set<number>();
+
+  const sessions = sorted.map((s, idx) => {
+    if (!isValidIsoDate(s.sessionDate)) {
+      throw new BillingError(`Invalid session date: ${s.sessionDate}`);
+    }
+    if (opts?.treatmentStartDate && s.sessionDate < opts.treatmentStartDate) {
+      throw new BillingError(`Session date ${s.sessionDate} is earlier than Treatment Start Date (${opts.treatmentStartDate})`);
+    }
+    if (opts?.treatmentEndDate && s.sessionDate > opts.treatmentEndDate) {
+      throw new BillingError(`Session date ${s.sessionDate} is after Treatment End Date (${opts.treatmentEndDate})`);
+    }
+    if (!Number.isInteger(s.amount) || s.amount < 0 || s.amount > 100_000_000) {
+      throw new BillingError("Session charge must be a valid non-negative rupee amount");
+    }
+    if (s.sourceAppointmentId != null) {
+      if (seenAppointmentIds.has(s.sourceAppointmentId)) {
+        throw new BillingError("Duplicate imported treatment session detected");
+      }
+      seenAppointmentIds.add(s.sourceAppointmentId);
+    }
+    return {
+      slNo: idx + 1,
+      sessionDate: s.sessionDate,
+      dayName: dayOfWeekName(s.sessionDate),
+      particulars: (s.particulars ?? "").trim() || "Physiotherapy Charges",
+      amount: s.amount,
+      sourceAppointmentId: s.sourceAppointmentId ?? null,
+    };
+  });
+
+  const totalSessions = sessions.length;
+  const totalAmount = sessions.reduce((sum, s) => sum + s.amount, 0);
+  return {
+    sessions,
+    totalSessions,
+    totalAmount,
+    amountInWords: rupeesInWords(totalAmount),
+  };
 }

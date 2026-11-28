@@ -1,11 +1,13 @@
-import { ArrowLeft, Download, FilePlus2, FileText, Plus, X, Lock, Pencil, Search, Trash2, UserPlus, Users, CalendarPlus } from "lucide-react";
+import { ArrowLeft, Download, FilePlus2, FileText, Lock, Pencil, PenTool, Search, Trash2, UserPlus, Users, CalendarPlus } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import type { DocumentSignatureRecord } from "../../shared/types";
 import { del, get, post, put } from "../api";
 import { useAuth } from "../auth";
 import { AppointmentForm } from "./appointments";
 import type { Settings } from "../../server/settings";
-import { downloadDetailedBillPdf } from "../pdf";
+import { downloadReportPdf } from "../pdf";
+import { DocumentSignatureModal } from "../signature-pad";
 import { Button, Empty, ErrorNote, Field, Modal, PageTitle, StatusBadge, fmtDate, fmtDateTime, money, useLoad, useToast } from "../ui";
 
 type Patient = {
@@ -140,10 +142,16 @@ export function PatientDetailPage() {
   const toast = useToast();
   const { can } = useAuth();
   const { data, error, reload } = useLoad(() => get<Detail>(`/patients/${id}`), [id]);
+  const { data: settings } = useLoad(() => get<Settings>("/settings"), []);
+  const { data: stmtSigRes } = useLoad(
+    () => get<{ signature: DocumentSignatureRecord | null }>(`/documents/session_statement/${id}/signature`).catch(() => ({ signature: null })),
+    [id],
+  );
+  const [stmtSig, setStmtSig] = useState<DocumentSignatureRecord | null>(null);
+  const [signingStmt, setSigningStmt] = useState(false);
   const [tab, setTab] = useState<"billing" | "appointments" | "clinical">("billing");
   const [editing, setEditing] = useState(false);
   const [booking, setBooking] = useState(false);
-  const [detailedBill, setDetailedBill] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [reason, setReason] = useState("");
   const [delErr, setDelErr] = useState<string | null>(null);
@@ -183,7 +191,7 @@ export function PatientDetailPage() {
         actions={!p.anonymisedAt && <>
           {can("patients.write") && <Button variant="secondary" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /> Edit</Button>}
           {can("appointments.write") && <Button variant="secondary" onClick={() => setBooking(true)}><CalendarPlus className="h-4 w-4" /> Book session</Button>}
-          {can("invoices.read") && <Button variant="secondary" onClick={() => setDetailedBill(true)}><FileText className="h-4 w-4" /> Detailed bill (insurance)</Button>}
+          {can("detailed_bills.write") && <Button variant="secondary" onClick={() => nav(`/detailed-bills/new?patient=${p.id}`)}><FileText className="h-4 w-4" /> Detailed Physiotherapy Bill</Button>}
           {can("invoices.write") && <Button onClick={() => nav(`/invoices/new?patient=${p.id}`)}><FilePlus2 className="h-4 w-4" /> New invoice</Button>}
         </>}
       />
@@ -268,13 +276,56 @@ export function PatientDetailPage() {
             </div>
           )}
           {tab === "appointments" && (data.appointments.length === 0 ? <Empty title="No sessions recorded" /> : (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Physiotherapist</th><th>Notes</th><th>Status</th></tr></thead>
-                <tbody>{data.appointments.map((a) => (
-                  <tr key={a.id}><td>{fmtDate(a.date)}</td><td>{a.time}</td><td className="capitalize">{a.visit_type}</td><td>{a.physiotherapist ?? "—"}</td><td className="text-muted">{a.notes ?? "—"}</td><td><StatusBadge status={a.status} /></td></tr>
-                ))}</tbody>
-              </table>
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line p-3 text-xs">
+                <span className="text-muted">
+                  Completed sessions: <strong>{completedSessions.length}</strong>
+                  {(stmtSig ?? stmtSigRes?.signature) ? " · Signed treatment statement available" : ""}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {completedSessions.length > 0 && can("signatures.manage") && (
+                    <Button size="sm" variant="secondary" onClick={() => setSigningStmt(true)}>
+                      <PenTool className="h-3.5 w-3.5" /> Sign Session Statement
+                    </Button>
+                  )}
+                  {completedSessions.length > 0 && settings && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        downloadReportPdf({
+                          clinicName: settings.clinic.name,
+                          title: `Treatment Session Statement - ${p.name} (${p.patientCode})`,
+                          subtitle: `${completedSessions.length} Completed Session(s)`,
+                          headers: ["#", "Date", "Time", "Type", "Physiotherapist", "Notes"],
+                          rows: completedSessions.map((a, idx) => [
+                            idx + 1,
+                            fmtDate(a.date),
+                            a.time,
+                            a.visit_type,
+                            a.physiotherapist ?? "-",
+                            a.notes ?? "-",
+                          ]),
+                          fileName: `Session-Statement-${p.patientCode}.pdf`,
+                          signature: stmtSig ?? stmtSigRes?.signature ?? null,
+                          settings,
+                        });
+                        toast("Treatment session statement PDF downloaded");
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5" /> Download Statement PDF
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Physiotherapist</th><th>Notes</th><th>Status</th></tr></thead>
+                  <tbody>{data.appointments.map((a) => (
+                    <tr key={a.id}><td>{fmtDate(a.date)}</td><td>{a.time}</td><td className="capitalize">{a.visit_type}</td><td>{a.physiotherapist ?? "—"}</td><td className="text-muted">{a.notes ?? "—"}</td><td><StatusBadge status={a.status} /></td></tr>
+                  ))}</tbody>
+                </table>
+              </div>
             </div>
           ))}
           {tab === "clinical" && <ClinicalNotes patientId={p.id} readOnly={!!p.anonymisedAt || !can("clinical.write")} />}
@@ -287,9 +338,16 @@ export function PatientDetailPage() {
       <Modal open={booking} onClose={() => setBooking(false)} title="New appointment">
         <AppointmentForm patient={{ id: p.id, name: p.name }} onDone={() => (setBooking(false), reload(), toast("Appointment saved"))} onCancel={() => setBooking(false)} />
       </Modal>
-      <Modal open={detailedBill} onClose={() => setDetailedBill(false)} title="Detailed physiotherapy bill (for insurance reimbursement)" wide>
-        {detailedBill && <DetailedBillForm patient={p} sessions={completedSessions} lastBillNo={data.invoices[0]?.invoice_no ?? ""} onDone={() => (setDetailedBill(false), toast("Detailed bill downloaded"))} />}
-      </Modal>
+      <DocumentSignatureModal
+        open={signingStmt}
+        onClose={() => setSigningStmt(false)}
+        docType="session_statement"
+        docId={p.id}
+        docLabel={`Treatment Session Statement (${p.patientCode})`}
+        defaultSignerName={settings?.clinic.signerName || "Sunil Kumar"}
+        defaultQualification={settings?.clinic.signerQualification || ""}
+        onSigned={(sig) => setStmtSig(sig)}
+      />
       <Modal open={deleting} onClose={() => setDeleting(false)} title="Delete patient record">
         <div className="space-y-4 text-sm">
           <p>{data.invoices.length > 0
@@ -337,94 +395,3 @@ function ClinicalNotes({ patientId, readOnly }: { patientId: number; readOnly: b
   );
 }
 
-function ageFrom(dob: string | null): string {
-  if (!dob) return "";
-  const d = new Date(dob + "T00:00:00");
-  if (isNaN(+d)) return "";
-  const now = new Date();
-  let a = now.getFullYear() - d.getFullYear();
-  if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) a--;
-  return String(a);
-}
-
-type BillRow = { date: string; particulars: string; amount: string };
-
-function DetailedBillForm({ patient, sessions, lastBillNo, onDone }: { patient: Patient; sessions: { date: string }[]; lastBillNo: string; onDone: () => void }) {
-  const { data: s } = useLoad(() => get<Settings>("/settings"), []);
-  const age = ageFrom(patient.dateOfBirth);
-  const [name, setName] = useState(patient.name);
-  const [ageGender, setAgeGender] = useState([age, patient.gender].filter(Boolean).join(" and "));
-  const [referredBy, setReferredBy] = useState("");
-  const [billNo, setBillNo] = useState(lastBillNo);
-  const [billDate, setBillDate] = useState(new Date().toISOString().slice(0, 10));
-  const [rate, setRate] = useState("1000");
-  const [rows, setRows] = useState<BillRow[]>(() =>
-    [...sessions].map((x) => x.date).sort().map((date) => ({ date, particulars: "Physiotherapy Charges", amount: "1000" })),
-  );
-  const [err, setErr] = useState<string | null>(null);
-
-  const total = rows.reduce((a, r) => a + (Number(r.amount) || 0), 0);
-  const set = (i: number, k: keyof BillRow, v: string) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
-
-  function download() {
-    setErr(null);
-    const clean = rows.filter((r) => r.date);
-    if (!clean.length) return setErr("Add at least one session date.");
-    if (!billNo.trim()) return setErr("Enter a bill number.");
-    if (!s) return setErr("Clinic settings are still loading. Try again.");
-    downloadDetailedBillPdf(
-      {
-        billNo: billNo.trim(), billDate, patientName: name.trim(), ageGender: ageGender.trim(), referredBy: referredBy.trim(),
-        sessions: clean.map((r) => ({ date: r.date, particulars: r.particulars || "Physiotherapy Charges", amount: Math.round((Number(r.amount) || 0) * 100) })),
-      },
-      s,
-      `Detailed-Bill-${billNo.trim().replace(/[^\w-]+/g, "_")}-${patient.patientCode}.pdf`,
-    );
-    onDone();
-  }
-
-  return (
-    <div className="space-y-4 text-sm">
-      <p className="rounded-xl bg-teal-50/80 p-3 text-xs text-teal-900">
-        A session-by-session statement patients can attach to an insurance reimbursement claim. It is pre-filled from this patient's completed sessions; check and edit before downloading.
-      </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Name of the patient"><input className="input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-        <Field label="Age and gender"><input className="input" value={ageGender} onChange={(e) => setAgeGender(e.target.value)} placeholder="e.g. 32 and Female" /></Field>
-        <Field label="Referred by"><input className="input" value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="e.g. Dr. name of referring doctor" /></Field>
-        <Field label="Bill no."><input className="input" value={billNo} onChange={(e) => setBillNo(e.target.value)} /></Field>
-        <Field label="Bill date"><input className="input" type="date" value={billDate} onChange={(e) => setBillDate(e.target.value)} /></Field>
-        <Field label="Charge per session (₹)" hint="Applies to all rows">
-          <div className="flex gap-2">
-            <input className="input" inputMode="numeric" value={rate} onChange={(e) => setRate(e.target.value)} />
-            <Button variant="secondary" size="sm" type="button" onClick={() => setRows((rs) => rs.map((r) => ({ ...r, amount: rate })))}>Apply</Button>
-          </div>
-        </Field>
-      </div>
-      <div className="overflow-x-auto rounded-xl border border-line">
-        <table className="w-full min-w-[520px] text-left">
-          <thead className="bg-cream text-xs text-muted uppercase">
-            <tr><th className="p-2">#</th><th className="p-2">Date</th><th className="p-2">Particulars</th><th className="p-2 text-right">Amount (₹)</th><th /></tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} className="border-t border-line">
-                <td className="p-2 text-muted">{i + 1}</td>
-                <td className="p-1.5"><input className="input !py-1.5" type="date" value={r.date} onChange={(e) => set(i, "date", e.target.value)} /></td>
-                <td className="p-1.5"><input className="input !py-1.5" value={r.particulars} onChange={(e) => set(i, "particulars", e.target.value)} /></td>
-                <td className="p-1.5"><input className="input num !py-1.5 text-right" inputMode="numeric" value={r.amount} onChange={(e) => set(i, "amount", e.target.value)} /></td>
-                <td className="p-1.5"><button type="button" aria-label="Remove row" className="rounded p-1 text-muted hover:text-rose-700" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}><X className="h-4 w-4" /></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" type="button" onClick={() => setRows((rs) => [...rs, { date: "", particulars: "Physiotherapy Charges", amount: rate }])}><Plus className="h-4 w-4" /> Add session</Button>
-        <p className="font-semibold text-navy-900">Total {rows.length} sessions · <span className="num">{money(Math.round(total * 100))}</span></p>
-      </div>
-      <ErrorNote error={err} />
-      <Button onClick={download}><Download className="h-4 w-4" /> Download detailed bill (PDF)</Button>
-    </div>
-  );
-}

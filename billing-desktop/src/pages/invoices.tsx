@@ -1,4 +1,4 @@
-import { FilePlus2, FileText, Search } from "lucide-react";
+import { FilePlus2, FileSpreadsheet, FileText, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { get } from "../api";
@@ -27,7 +27,24 @@ export function InvoicesPage() {
   );
   return (
     <div>
-      <PageTitle title="Invoices" subtitle={data ? `${data.total} invoice${data.total === 1 ? "" : "s"}` : " "} actions={can("invoices.write") && <Button onClick={() => nav("/invoices/new")}><FilePlus2 className="h-4 w-4" /> New invoice</Button>} />
+      <PageTitle
+        title="Invoices"
+        subtitle={data ? `${data.total} invoice${data.total === 1 ? "" : "s"}` : " "}
+        actions={
+          <>
+            {can("detailed_bills.read") && (
+              <Button variant="secondary" onClick={() => nav("/detailed-bills")}>
+                <FileSpreadsheet className="h-4 w-4" /> Detailed Physiotherapy Bills
+              </Button>
+            )}
+            {can("invoices.write") && (
+              <Button onClick={() => nav("/invoices/new")}>
+                <FilePlus2 className="h-4 w-4" /> New invoice
+              </Button>
+            )}
+          </>
+        }
+      />
       <div className="card overflow-hidden">
         <div className="flex flex-wrap gap-3 border-b border-line p-4">
           <label className="relative min-w-56 flex-1">
