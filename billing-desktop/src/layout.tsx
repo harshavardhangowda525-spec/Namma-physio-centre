@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, FileText, Inbox, LayoutDashboard, LogOut, Menu, RotateCcw, Settings, Sparkles, Users, WifiOff, X } from "lucide-react";
+import { BarChart3, CalendarDays, FileSpreadsheet, FileText, Inbox, LayoutDashboard, LogOut, Menu, RotateCcw, Settings, Sparkles, Users, WifiOff, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router";
 import type { Role, SessionUser } from "../shared/types";
@@ -26,6 +26,7 @@ export function Layout() {
     { to: "/", label: "Dashboard", icon: LayoutDashboard, show: true },
     { to: "/patients", label: "Patients", icon: Users, show: can("patients.read") },
     { to: "/invoices", label: "Invoices", icon: FileText, show: can("invoices.read") },
+    { to: "/detailed-bills", label: "Detailed Physiotherapy Bills", icon: FileSpreadsheet, show: can("detailed_bills.read") },
     { to: "/appointments", label: "Appointments", icon: CalendarDays, show: can("appointments.read") },
     { to: "/inquiries", label: "Appointment Inquiries", icon: Inbox, show: canReadInquiries },
     { to: "/reports", label: "Reports", icon: BarChart3, show: can("reports.read") },

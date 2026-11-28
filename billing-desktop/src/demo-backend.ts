@@ -1,8 +1,19 @@
-import { calcInvoice, financialYear, formatDocNumber, paymentStatus, type LineInput } from "../shared/billing";
-import { can, type AppointmentStatus, type Permission, type Role, type SessionUser } from "../shared/types";
+import { calcDetailedBill, calcInvoice, financialYear, formatDocNumber, paymentStatus, type LineInput } from "../shared/billing";
+import {
+  can,
+  type AppointmentStatus,
+  type DetailedBillFull,
+  type DetailedBillStatus,
+  type DetailedBillSummary,
+  type DocumentSignatureRecord,
+  type Permission,
+  type Role,
+  type SignableDocumentType,
+  type SessionUser,
+} from "../shared/types";
 import { defaultSettings, type Settings } from "../server/settings";
 
-const STORAGE_KEY = "npb_demo_sandbox_v1";
+const STORAGE_KEY = "npb_demo_sandbox_v2";
 
 type DemoUser = {
   id: number;
@@ -124,6 +135,51 @@ type DemoBackupFile = {
   kind: string;
 };
 
+type DemoSavedSig = {
+  userId: number;
+  signerName: string;
+  signerQualification: string;
+  imageDataUrl: string;
+  updatedAt: string;
+};
+
+type DemoDetailedBillRow = {
+  id: number;
+  bill_no: string;
+  version: number;
+  parent_bill_id: number | null;
+  superseded_by_id: number | null;
+  patient_id: number;
+  patient_name: string;
+  patient_age_gender: string;
+  referred_by: string;
+  treatment_start_date: string;
+  treatment_end_date: string;
+  bill_date: string;
+  default_charge: number;
+  total_sessions: number;
+  total_amount: number;
+  amount_in_words: string;
+  status: DetailedBillStatus;
+  signed_at: string | null;
+  shared_at: string | null;
+  notes: string | null;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type DemoDetailedSessionRow = {
+  id: number;
+  detailed_bill_id: number;
+  sl_no: number;
+  session_date: string;
+  day_name: string;
+  particulars: string;
+  amount: number;
+  source_appointment_id: number | null;
+};
+
 type DemoState = {
   seedDate: string;
   activeUserId: number | null;
@@ -137,6 +193,10 @@ type DemoState = {
   invoiceItems: DemoInvoiceItem[];
   payments: DemoPayment[];
   appointments: DemoAppointment[];
+  savedSignatures: DemoSavedSig[];
+  docSignatures: DocumentSignatureRecord[];
+  detailedBills: DemoDetailedBillRow[];
+  detailedBillSessions: DemoDetailedSessionRow[];
   audit: DemoAudit[];
   backups: DemoBackupFile[];
 };
@@ -544,6 +604,63 @@ function buildSeedState(): DemoState {
     },
   ];
 
+  const seedFy = financialYear(t);
+  const seedDbKey = `seq:detailed_bill:${seedFy}`;
+  counters[seedDbKey] = 1;
+  const seedBillNo = formatDocNumber(settings.invoice.detailedBillPrefix ?? "NPC-DB", seedFy, 1, settings.invoice.padding);
+  const seedSessionDates = [
+    shiftDays(t, -18),
+    shiftDays(t, -16),
+    shiftDays(t, -14),
+    shiftDays(t, -11),
+    shiftDays(t, -9),
+    shiftDays(t, -7),
+    shiftDays(t, -4),
+    shiftDays(t, -2),
+    t,
+  ];
+  const seedCalc = calcDetailedBill(
+    seedSessionDates.map((d) => ({ sessionDate: d, particulars: "Physiotherapy Charges", amount: 120_000 })),
+    { treatmentStartDate: seedSessionDates[0], treatmentEndDate: t },
+  );
+  const detailedBills: DemoDetailedBillRow[] = [
+    {
+      id: 1,
+      bill_no: seedBillNo,
+      version: 1,
+      parent_bill_id: null,
+      superseded_by_id: null,
+      patient_id: 1,
+      patient_name: "Raghavendra Rao",
+      patient_age_gender: "64 and Male",
+      referred_by: "Dr. Mahesh Hegde (Orthopaedics)",
+      treatment_start_date: seedSessionDates[0],
+      treatment_end_date: t,
+      bill_date: t,
+      default_charge: 120_000,
+      total_sessions: seedCalc.totalSessions,
+      total_amount: seedCalc.totalAmount,
+      amount_in_words: seedCalc.amountInWords,
+      status: "ready_for_signature",
+      signed_at: null,
+      shared_at: null,
+      notes: "Fictional sample insurance reimbursement statement.",
+      created_by: 1,
+      created_at: now,
+      updated_at: now,
+    },
+  ];
+  const detailedBillSessions: DemoDetailedSessionRow[] = seedCalc.sessions.map((s, idx) => ({
+    id: idx + 1,
+    detailed_bill_id: 1,
+    sl_no: s.slNo,
+    session_date: s.sessionDate,
+    day_name: s.dayName,
+    particulars: s.particulars,
+    amount: s.amount,
+    source_appointment_id: s.sourceAppointmentId,
+  }));
+
   return {
     seedDate: t,
     activeUserId: 1,
@@ -557,6 +674,10 @@ function buildSeedState(): DemoState {
     invoiceItems,
     payments,
     appointments,
+    savedSignatures: [],
+    docSignatures: [],
+    detailedBills,
+    detailedBillSessions,
     audit,
     backups,
   };
@@ -1088,6 +1209,9 @@ export async function demoApi<T = unknown>(method: string, rawUrl: string, body?
     if (m === "PUT") {
       const u = assertPerm(st, "invoices.write");
       if (inv.status === "void" || inv.paid > 0) throw new DemoApiError(409, "Paid or void invoices cannot be edited");
+      if (st.docSignatures.some((s) => s.docType === "invoice" && s.docId === iid)) {
+        throw new DemoApiError(409, "Signed invoices are locked against silent modification. Void and reissue if required.");
+      }
       const taxOn = st.settings.tax.enabled;
       const calc = calcInvoice((b.items as LineInput[]).map((l) => ({ ...l, taxRateBp: taxOn ? l.taxRateBp : 0 })));
       Object.assign(inv, {
@@ -1539,6 +1663,501 @@ export async function demoApi<T = unknown>(method: string, rawUrl: string, body?
     assertPerm(st, "audit.read");
     const q = (query.get("q") ?? "").trim().toLowerCase();
     return st.audit.filter((a) => !q || a.action.toLowerCase().includes(q) || (a.username ?? "").toLowerCase().includes(q)).slice(0, 300) as T;
+  }
+
+  // ---- Electronic Handwritten Signatures ----
+  if (path === "/signatures/me") {
+    const u = assertPerm(st, "signatures.manage");
+    const existing = st.savedSignatures.find((s) => s.userId === u.id);
+    if (m === "GET") {
+      return {
+        hasSaved: !!existing,
+        signerName: existing?.signerName ?? (st.settings.clinic.signerName || u.display_name),
+        signerQualification: existing?.signerQualification ?? (st.settings.clinic.signerQualification || ""),
+        imageDataUrl: existing?.imageDataUrl ?? null,
+        updatedAt: existing?.updatedAt ?? null,
+      } as T;
+    }
+    if (m === "PUT") {
+      const img = String(b.imageDataUrl ?? "").trim();
+      if (!img.startsWith("data:image/png;base64,")) throw new DemoApiError(400, "Signature must be a PNG data URL");
+      const signerName = String(b.signerName ?? "").trim();
+      if (signerName.length < 2) throw new DemoApiError(400, "Enter signer name");
+      const now = new Date().toISOString();
+      const entry: DemoSavedSig = {
+        userId: u.id,
+        signerName,
+        signerQualification: String(b.signerQualification ?? "").trim(),
+        imageDataUrl: img,
+        updatedAt: now,
+      };
+      st.savedSignatures = [...st.savedSignatures.filter((s) => s.userId !== u.id), entry];
+      logAudit(st, u, "signature.save", "signature", u.id, { signerName });
+      saveState(st);
+      return { ok: true, updatedAt: now } as T;
+    }
+    if (m === "DELETE") {
+      st.savedSignatures = st.savedSignatures.filter((s) => s.userId !== u.id);
+      logAudit(st, u, "signature.delete", "signature", u.id);
+      saveState(st);
+      return { ok: true } as T;
+    }
+  }
+
+  const docSigMatch = path.match(/^\/documents\/(invoice|receipt|detailed_bill|session_statement)\/(\d+)\/(signature|sign)$/);
+  if (docSigMatch) {
+    const docType = docSigMatch[1] as SignableDocumentType;
+    const docId = Number(docSigMatch[2]);
+    const action = docSigMatch[3];
+
+    if (m === "GET" && action === "signature") {
+      assertPerm(st, "invoices.read");
+      const latest = [...st.docSignatures]
+        .filter((s) => s.docType === docType && s.docId === docId)
+        .sort((a, c) => c.docVersion - a.docVersion || c.id - a.id)[0] ?? null;
+      return { signature: latest } as T;
+    }
+
+    if (m === "POST" && action === "sign") {
+      const u = assertPerm(st, "signatures.manage");
+      if (b.confirmAuthorization !== true) {
+        throw new DemoApiError(400, "Explicit authorization confirmation is required before signing");
+      }
+      let imageDataUrl = "";
+      let signerName = "";
+      let signerQualification = "";
+      if (b.mode === "drawn") {
+        imageDataUrl = String(b.imageDataUrl ?? "").trim();
+        if (!imageDataUrl.startsWith("data:image/png;base64,")) throw new DemoApiError(400, "Signature must be a PNG data URL");
+        signerName = String(b.signerName ?? "").trim();
+        if (signerName.length < 2) throw new DemoApiError(400, "Enter signer name");
+        signerQualification = String(b.signerQualification ?? "").trim();
+        if (b.saveForReuse) {
+          st.savedSignatures = [
+            ...st.savedSignatures.filter((s) => s.userId !== u.id),
+            { userId: u.id, signerName, signerQualification, imageDataUrl, updatedAt: new Date().toISOString() },
+          ];
+        }
+      } else {
+        const saved = st.savedSignatures.find((s) => s.userId === u.id);
+        if (!saved) throw new DemoApiError(400, "No saved signature found for your account");
+        imageDataUrl = saved.imageDataUrl;
+        signerName = String(b.signerName ?? "").trim() || saved.signerName;
+        signerQualification = b.signerQualification !== undefined ? String(b.signerQualification).trim() : saved.signerQualification;
+      }
+
+      let docNo = `${docType.toUpperCase()}-${docId}`;
+      let docVersion = 1;
+      if (docType === "detailed_bill") {
+        const bill = st.detailedBills.find((x) => x.id === docId);
+        if (!bill) throw new DemoApiError(404, "Detailed physiotherapy bill not found");
+        if (bill.status === "cancelled" || bill.status === "superseded") throw new DemoApiError(409, `Cannot sign a ${bill.status} bill`);
+        docNo = bill.bill_no;
+        docVersion = bill.version;
+      } else if (docType === "invoice") {
+        const inv = st.invoices.find((x) => x.id === docId);
+        if (!inv) throw new DemoApiError(404, "Invoice not found");
+        if (inv.status === "void") throw new DemoApiError(409, "Cannot sign a void invoice");
+        docNo = inv.invoice_no;
+      } else if (docType === "receipt") {
+        const pay = st.payments.find((x) => x.id === docId);
+        if (!pay) throw new DemoApiError(404, "Receipt not found");
+        docNo = pay.receipt_no;
+      } else {
+        const pat = st.patients.find((x) => x.id === docId);
+        if (!pat) throw new DemoApiError(404, "Patient not found");
+        docNo = `STMT-${pat.patient_code}`;
+        docVersion = st.docSignatures.filter((s) => s.docType === "session_statement" && s.docId === docId).length + 1;
+      }
+
+      if (st.docSignatures.some((s) => s.docType === docType && s.docId === docId && s.docVersion === docVersion)) {
+        throw new DemoApiError(409, "This document version is already signed and locked against modification.");
+      }
+
+      const signedAt = new Date().toISOString();
+      const sig: DocumentSignatureRecord = {
+        id: st.docSignatures.reduce((mx, s) => Math.max(mx, s.id), 0) + 1,
+        docType,
+        docId,
+        docNo,
+        docVersion,
+        payloadSha256: `demo-sha256-${docType}-${docId}-v${docVersion}`,
+        imageDataUrl,
+        signerUserId: u.id,
+        signerUsername: u.username,
+        signerName,
+        signerQualification,
+        signedAt,
+      };
+      st.docSignatures.push(sig);
+
+      if (docType === "detailed_bill") {
+        const bill = st.detailedBills.find((x) => x.id === docId)!;
+        bill.status = "signed";
+        bill.signed_at = signedAt;
+        bill.updated_at = signedAt;
+      }
+
+      logAudit(st, u, "document.sign", docType, docId, { docNo, docVersion, signerName });
+      saveState(st);
+      return { signature: sig } as T;
+    }
+  }
+
+  // ---- Detailed Physiotherapy Bills ----
+  const mapDemoBillSummary = (r: DemoDetailedBillRow): DetailedBillSummary => {
+    const p = st.patients.find((x) => x.id === r.patient_id);
+    return {
+      id: r.id,
+      billNo: r.bill_no,
+      version: r.version,
+      parentBillId: r.parent_bill_id,
+      supersededById: r.superseded_by_id,
+      patientId: r.patient_id,
+      patientCode: p?.patient_code ?? "",
+      patientPhone: p?.phone ?? null,
+      patientName: r.patient_name,
+      patientAgeGender: r.patient_age_gender,
+      referredBy: r.referred_by,
+      treatmentStartDate: r.treatment_start_date,
+      treatmentEndDate: r.treatment_end_date,
+      billDate: r.bill_date,
+      defaultCharge: r.default_charge,
+      totalSessions: r.total_sessions,
+      totalAmount: r.total_amount,
+      amountInWords: r.amount_in_words,
+      status: r.status,
+      signedAt: r.signed_at,
+      sharedAt: r.shared_at,
+      notes: r.notes,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    };
+  };
+
+  const loadDemoBillFull = (billId: number): DetailedBillFull => {
+    const r = st.detailedBills.find((x) => x.id === billId);
+    if (!r) throw new DemoApiError(404, "Detailed physiotherapy bill not found");
+    const sessions = st.detailedBillSessions
+      .filter((s) => s.detailed_bill_id === billId)
+      .sort((a, c) => a.sl_no - c.sl_no)
+      .map((s) => ({
+        id: s.id,
+        slNo: s.sl_no,
+        sessionDate: s.session_date,
+        dayName: s.day_name,
+        particulars: s.particulars,
+        amount: s.amount,
+        sourceAppointmentId: s.source_appointment_id,
+      }));
+    const sig = [...st.docSignatures]
+      .filter((s) => s.docType === "detailed_bill" && s.docId === billId)
+      .sort((a, c) => c.docVersion - a.docVersion || c.id - a.id)[0] ?? null;
+    return { ...mapDemoBillSummary(r), sessions, signature: sig };
+  };
+
+  const allocDemoBillNo = (date: string, previewOnly: boolean): string => {
+    const fy = st.settings.invoice.resetEachFinancialYear ? financialYear(date) : null;
+    const prefix = st.settings.invoice.detailedBillPrefix || "NPC-DB";
+    const key = `seq:detailed_bill:${fy ?? "all"}`;
+    let seq = (st.counters[key] ?? 0) + 1;
+    for (;;) {
+      const candidate = formatDocNumber(prefix, fy, seq, st.settings.invoice.padding);
+      if (!st.detailedBills.some((x) => x.bill_no === candidate)) {
+        if (!previewOnly) st.counters[key] = seq;
+        return candidate;
+      }
+      seq++;
+    }
+  };
+
+  if (m === "GET" && path === "/detailed-bills/next-number") {
+    assertPerm(st, "detailed_bills.read");
+    const d = query.get("date") || todayIST();
+    return { billNo: allocDemoBillNo(d, true) } as T;
+  }
+
+  if (m === "GET" && path === "/detailed-bills/completed-sessions") {
+    assertPerm(st, "detailed_bills.read");
+    const patientId = Number(query.get("patientId"));
+    if (!patientId) throw new DemoApiError(400, "Select a valid patient");
+    const from = query.get("from") || "0000-01-01";
+    const to = query.get("to") || "9999-12-31";
+    if (to < from) throw new DemoApiError(400, "End date cannot be earlier than start date");
+    const defaultCharge = st.settings.invoice.defaultSessionChargePaise ?? 120_000;
+    const sessions = st.appointments
+      .filter((a) => a.patient_id === patientId && a.status === "completed" && a.date >= from && a.date <= to)
+      .sort((a, c) => (a.date + a.time).localeCompare(c.date + c.time) || a.id - c.id)
+      .map((a) => ({
+        sourceAppointmentId: a.id,
+        sessionDate: a.date,
+        time: a.time,
+        visitType: a.visit_type,
+        particulars: "Physiotherapy Charges",
+        amount: defaultCharge,
+        notes: a.notes,
+      }));
+    return { sessions } as T;
+  }
+
+  if (m === "GET" && path === "/detailed-bills") {
+    assertPerm(st, "detailed_bills.read");
+    const q = (query.get("q") ?? "").trim().toLowerCase();
+    const status = query.get("status") ?? "";
+    const patientId = Number(query.get("patientId")) || 0;
+    const filtered = st.detailedBills
+      .filter((r) => {
+        const p = st.patients.find((x) => x.id === r.patient_id);
+        if (q && ![r.bill_no, r.patient_name, p?.patient_code, p?.phone].some((v) => v?.toLowerCase().includes(q))) return false;
+        if (status && r.status !== status) return false;
+        if (patientId > 0 && r.patient_id !== patientId) return false;
+        return true;
+      })
+      .sort((a, c) => c.updated_at.localeCompare(a.updated_at) || c.id - a.id);
+    return { total: filtered.length, items: filtered.map(mapDemoBillSummary) } as T;
+  }
+
+  if (m === "POST" && path === "/detailed-bills") {
+    const u = assertPerm(st, "detailed_bills.write");
+    const patient = st.patients.find((x) => x.id === Number(b.patientId));
+    if (!patient) throw new DemoApiError(400, "Patient not found");
+    if (patient.anonymised_at) throw new DemoApiError(409, "Cannot generate a bill for an anonymised patient record");
+    const calc = calcDetailedBill(b.sessions ?? [], {
+      treatmentStartDate: String(b.treatmentStartDate),
+      treatmentEndDate: String(b.treatmentEndDate),
+    });
+    const billDate = String(b.billDate || todayIST());
+    const billNo = String(b.billNo ?? "").trim() || allocDemoBillNo(billDate, false);
+    if (st.detailedBills.some((x) => x.bill_no === billNo)) throw new DemoApiError(409, `Bill number "${billNo}" already exists`);
+    const id = st.detailedBills.reduce((mx, x) => Math.max(mx, x.id), 0) + 1;
+    const now = new Date().toISOString();
+    st.detailedBills.push({
+      id,
+      bill_no: billNo,
+      version: 1,
+      parent_bill_id: null,
+      superseded_by_id: null,
+      patient_id: patient.id,
+      patient_name: String(b.patientName).trim(),
+      patient_age_gender: String(b.patientAgeGender ?? "").trim(),
+      referred_by: String(b.referredBy ?? "").trim(),
+      treatment_start_date: String(b.treatmentStartDate),
+      treatment_end_date: String(b.treatmentEndDate),
+      bill_date: billDate,
+      default_charge: Number(b.defaultCharge ?? 120_000),
+      total_sessions: calc.totalSessions,
+      total_amount: calc.totalAmount,
+      amount_in_words: calc.amountInWords,
+      status: b.status === "ready_for_signature" ? "ready_for_signature" : "draft",
+      signed_at: null,
+      shared_at: null,
+      notes: b.notes?.trim() || null,
+      created_by: u.id,
+      created_at: now,
+      updated_at: now,
+    });
+    let nextSid = st.detailedBillSessions.reduce((mx, x) => Math.max(mx, x.id), 0) + 1;
+    for (const s of calc.sessions) {
+      st.detailedBillSessions.push({
+        id: nextSid++,
+        detailed_bill_id: id,
+        sl_no: s.slNo,
+        session_date: s.sessionDate,
+        day_name: s.dayName,
+        particulars: s.particulars,
+        amount: s.amount,
+        source_appointment_id: s.sourceAppointmentId,
+      });
+    }
+    logAudit(st, u, "detailed_bill.create", "detailed_bill", id, { billNo, totalSessions: calc.totalSessions, totalAmount: calc.totalAmount });
+    saveState(st);
+    return loadDemoBillFull(id) as T;
+  }
+
+  const dbActionMatch = path.match(/^\/detailed-bills\/(\d+)(?:\/(status|duplicate|revise))?$/);
+  if (dbActionMatch) {
+    const billId = Number(dbActionMatch[1]);
+    const sub = dbActionMatch[2];
+    if (m === "GET" && !sub) {
+      assertPerm(st, "detailed_bills.read");
+      return loadDemoBillFull(billId) as T;
+    }
+    if (m === "PUT" && !sub) {
+      const u = assertPerm(st, "detailed_bills.write");
+      const cur = st.detailedBills.find((x) => x.id === billId);
+      if (!cur) throw new DemoApiError(404, "Detailed physiotherapy bill not found");
+      if (!["draft", "ready_for_signature"].includes(cur.status)) {
+        throw new DemoApiError(409, `This bill is ${cur.status} and locked against silent modification. Create a revision instead.`);
+      }
+      const calc = calcDetailedBill(b.sessions ?? [], {
+        treatmentStartDate: String(b.treatmentStartDate),
+        treatmentEndDate: String(b.treatmentEndDate),
+      });
+      const nextBillNo = String(b.billNo ?? "").trim() || cur.bill_no;
+      if (st.detailedBills.some((x) => x.bill_no === nextBillNo && x.id !== billId)) {
+        throw new DemoApiError(409, `Bill number "${nextBillNo}" is already used`);
+      }
+      Object.assign(cur, {
+        bill_no: nextBillNo,
+        patient_id: Number(b.patientId),
+        patient_name: String(b.patientName).trim(),
+        patient_age_gender: String(b.patientAgeGender ?? "").trim(),
+        referred_by: String(b.referredBy ?? "").trim(),
+        treatment_start_date: String(b.treatmentStartDate),
+        treatment_end_date: String(b.treatmentEndDate),
+        bill_date: String(b.billDate),
+        default_charge: Number(b.defaultCharge ?? 120_000),
+        total_sessions: calc.totalSessions,
+        total_amount: calc.totalAmount,
+        amount_in_words: calc.amountInWords,
+        status: b.status === "ready_for_signature" ? "ready_for_signature" : "draft",
+        notes: b.notes?.trim() || null,
+        updated_at: new Date().toISOString(),
+      });
+      st.detailedBillSessions = st.detailedBillSessions.filter((s) => s.detailed_bill_id !== billId);
+      let nextSid = st.detailedBillSessions.reduce((mx, x) => Math.max(mx, x.id), 0) + 1;
+      for (const s of calc.sessions) {
+        st.detailedBillSessions.push({
+          id: nextSid++,
+          detailed_bill_id: billId,
+          sl_no: s.slNo,
+          session_date: s.sessionDate,
+          day_name: s.dayName,
+          particulars: s.particulars,
+          amount: s.amount,
+          source_appointment_id: s.sourceAppointmentId,
+        });
+      }
+      logAudit(st, u, "detailed_bill.update", "detailed_bill", billId);
+      saveState(st);
+      return loadDemoBillFull(billId) as T;
+    }
+    if (m === "POST" && sub === "status") {
+      const u = assertPerm(st, "detailed_bills.write");
+      const cur = loadDemoBillFull(billId);
+      const nextStatus = String(b.status) as DetailedBillStatus;
+      if (cur.status === "superseded") throw new DemoApiError(409, "Superseded bills cannot change status");
+      if (cur.signature && (nextStatus === "draft" || nextStatus === "ready_for_signature")) {
+        throw new DemoApiError(409, "Signed bills cannot be reverted to draft.");
+      }
+      const row = st.detailedBills.find((x) => x.id === billId)!;
+      const now = new Date().toISOString();
+      row.status = nextStatus;
+      if (nextStatus === "shared") row.shared_at = now;
+      row.updated_at = now;
+      logAudit(st, u, `detailed_bill.${nextStatus}`, "detailed_bill", billId);
+      saveState(st);
+      return loadDemoBillFull(billId) as T;
+    }
+    if (m === "POST" && sub === "duplicate") {
+      const u = assertPerm(st, "detailed_bills.write");
+      const src = loadDemoBillFull(billId);
+      const nowDate = todayIST();
+      const now = new Date().toISOString();
+      const newNo = allocDemoBillNo(nowDate, false);
+      const newId = st.detailedBills.reduce((mx, x) => Math.max(mx, x.id), 0) + 1;
+      st.detailedBills.push({
+        id: newId,
+        bill_no: newNo,
+        version: 1,
+        parent_bill_id: null,
+        superseded_by_id: null,
+        patient_id: src.patientId,
+        patient_name: src.patientName,
+        patient_age_gender: src.patientAgeGender,
+        referred_by: src.referredBy,
+        treatment_start_date: src.treatmentStartDate,
+        treatment_end_date: src.treatmentEndDate,
+        bill_date: nowDate,
+        default_charge: src.defaultCharge,
+        total_sessions: src.totalSessions,
+        total_amount: src.totalAmount,
+        amount_in_words: src.amountInWords,
+        status: "draft",
+        signed_at: null,
+        shared_at: null,
+        notes: src.notes,
+        created_by: u.id,
+        created_at: now,
+        updated_at: now,
+      });
+      let nextSid = st.detailedBillSessions.reduce((mx, x) => Math.max(mx, x.id), 0) + 1;
+      for (const s of src.sessions) {
+        st.detailedBillSessions.push({
+          id: nextSid++,
+          detailed_bill_id: newId,
+          sl_no: s.slNo,
+          session_date: s.sessionDate,
+          day_name: s.dayName,
+          particulars: s.particulars,
+          amount: s.amount,
+          source_appointment_id: s.sourceAppointmentId,
+        });
+      }
+      logAudit(st, u, "detailed_bill.duplicate", "detailed_bill", newId);
+      saveState(st);
+      return loadDemoBillFull(newId) as T;
+    }
+    if (m === "POST" && sub === "revise") {
+      const u = assertPerm(st, "detailed_bills.write");
+      const src = loadDemoBillFull(billId);
+      if (src.status === "superseded") throw new DemoApiError(409, "Already superseded");
+      const baseNo = src.billNo.replace(/-R\d+$/, "");
+      const nextVer = src.version + 1;
+      let revNo = `${baseNo}-R${nextVer}`;
+      let sfx = nextVer;
+      while (st.detailedBills.some((x) => x.bill_no === revNo)) {
+        sfx++;
+        revNo = `${baseNo}-R${sfx}`;
+      }
+      const now = new Date().toISOString();
+      const newId = st.detailedBills.reduce((mx, x) => Math.max(mx, x.id), 0) + 1;
+      st.detailedBills.push({
+        id: newId,
+        bill_no: revNo,
+        version: nextVer,
+        parent_bill_id: src.id,
+        superseded_by_id: null,
+        patient_id: src.patientId,
+        patient_name: src.patientName,
+        patient_age_gender: src.patientAgeGender,
+        referred_by: src.referredBy,
+        treatment_start_date: src.treatmentStartDate,
+        treatment_end_date: src.treatmentEndDate,
+        bill_date: src.billDate,
+        default_charge: src.defaultCharge,
+        total_sessions: src.totalSessions,
+        total_amount: src.totalAmount,
+        amount_in_words: src.amountInWords,
+        status: "draft",
+        signed_at: null,
+        shared_at: null,
+        notes: src.notes,
+        created_by: u.id,
+        created_at: now,
+        updated_at: now,
+      });
+      const origRow = st.detailedBills.find((x) => x.id === src.id)!;
+      origRow.status = "superseded";
+      origRow.superseded_by_id = newId;
+      origRow.updated_at = now;
+      let nextSid = st.detailedBillSessions.reduce((mx, x) => Math.max(mx, x.id), 0) + 1;
+      for (const s of src.sessions) {
+        st.detailedBillSessions.push({
+          id: nextSid++,
+          detailed_bill_id: newId,
+          sl_no: s.slNo,
+          session_date: s.sessionDate,
+          day_name: s.dayName,
+          particulars: s.particulars,
+          amount: s.amount,
+          source_appointment_id: s.sourceAppointmentId,
+        });
+      }
+      logAudit(st, u, "detailed_bill.revise", "detailed_bill", newId, { fromBillId: src.id, revNo });
+      saveState(st);
+      return loadDemoBillFull(newId) as T;
+    }
   }
 
   throw new DemoApiError(404, `Demo endpoint not implemented: ${m} ${path}`);

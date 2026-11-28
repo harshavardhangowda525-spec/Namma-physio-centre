@@ -1,5 +1,5 @@
 import "server-only";
-import { decrypt, encrypt } from "./crypto";
+import { decrypt, encrypt, oauthEncryptionConfigured } from "./crypto";
 import { getToken, setToken, type AppointmentRequest } from "./db";
 
 /**
@@ -7,15 +7,29 @@ import { getToken, setToken, type AppointmentRequest } from "./db";
  * The clinic owner connects their own calendar from /admin via OAuth.
  * Event titles/descriptions intentionally exclude medical details.
  */
-const SCOPES = ["https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar.freebusy"];
+const SCOPES = [
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar.freebusy",
+];
 const PROVIDER = "google-calendar";
-const TZ = "Asia/Kolkata";
+export const CLINIC_TIMEZONE = "Asia/Kolkata";
 
 export function calendarConfigured() {
-  return Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET && process.env.CALENDAR_TOKEN_ENCRYPTION_KEY);
+  return Boolean(
+    process.env.GOOGLE_OAUTH_CLIENT_ID &&
+      process.env.GOOGLE_OAUTH_CLIENT_SECRET &&
+      oauthEncryptionConfigured(),
+  );
 }
+
 const calendarId = () => encodeURIComponent(process.env.GOOGLE_CALENDAR_ID || "primary");
 const redirectUri = () => `${process.env.NEXT_PUBLIC_SITE_URL}/api/admin/calendar/callback`;
+
+export function googleCalendarDayUrl(date: string): string {
+  const [y, m, d] = date.split("-").map((v) => Number(v));
+  if (!y || !m || !d) return "https://calendar.google.com/calendar/u/0/r";
+  return `https://calendar.google.com/calendar/u/0/r/day/${y}/${m}/${d}`;
+}
 
 export function authUrl(state: string) {
   const p = new URLSearchParams({
@@ -45,13 +59,16 @@ export async function exchangeCode(code: string) {
   });
   if (!res.ok) throw new Error(`Token exchange failed (${res.status})`);
   const j = (await res.json()) as { refresh_token?: string };
-  if (!j.refresh_token) throw new Error("Google did not return a refresh token. Remove the app's access in your Google account and connect again.");
+  if (!j.refresh_token) {
+    throw new Error("Google did not return a refresh token. Remove the app's access in your Google account and connect again.");
+  }
   await setToken(PROVIDER, encrypt(j.refresh_token));
 }
 
 export async function isCalendarConnected() {
   return calendarConfigured() && Boolean(await getToken(PROVIDER));
 }
+
 export async function disconnectCalendar() {
   await setToken(PROVIDER, null);
 }
@@ -78,6 +95,7 @@ async function accessToken(): Promise<string | null> {
 export function istDateTime(date: string, time: string) {
   return `${date}T${time}:00+05:30`;
 }
+
 export function addMinutes(date: string, time: string, minutes: number) {
   const d = new Date(istDateTime(date, time));
   d.setMinutes(d.getMinutes() + minutes);
@@ -94,24 +112,53 @@ export async function calendarBusy(date: string, time: string, minutes: number):
     body: JSON.stringify({
       timeMin: new Date(istDateTime(date, time)).toISOString(),
       timeMax: addMinutes(date, time, minutes),
-      timeZone: TZ,
+      timeZone: CLINIC_TIMEZONE,
       items: [{ id: decodeURIComponent(calendarId()) }],
     }),
   });
   if (!res.ok) throw new Error(`Calendar availability check failed (${res.status})`);
-  const j = (await res.json()) as { calendars: Record<string, { busy: unknown[] }> };
+  const j = (await res.json()) as { calendars: Record<string, { busy: { start: string; end: string }[] }> };
   return Object.values(j.calendars).some((c) => c.busy?.length > 0);
+}
+
+/** Retrieves busy intervals across the whole IST day so the approval screen can display busy windows. */
+export async function calendarDayBusyWindows(
+  date: string,
+): Promise<{ connected: boolean; busy: { start: string; end: string }[]; error?: string }> {
+  try {
+    const token = await accessToken();
+    if (!token) return { connected: false, busy: [] };
+    const res = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        timeMin: new Date(`${date}T00:00:00+05:30`).toISOString(),
+        timeMax: new Date(`${date}T23:59:59+05:30`).toISOString(),
+        timeZone: CLINIC_TIMEZONE,
+        items: [{ id: decodeURIComponent(calendarId()) }],
+      }),
+    });
+    if (!res.ok) return { connected: true, busy: [], error: `Calendar API returned ${res.status}` };
+    const j = (await res.json()) as { calendars: Record<string, { busy: { start: string; end: string }[] }> };
+    const busy = Object.values(j.calendars).flatMap((c) => c.busy ?? []);
+    return { connected: true, busy };
+  } catch (e) {
+    return { connected: true, busy: [], error: (e as Error).message };
+  }
 }
 
 function eventBody(r: AppointmentRequest, date: string, time: string, minutes: number) {
   const kind = r.visit_type === "home" ? "Home visit" : "Clinic visit";
   return {
-    // No diagnosis, reason or notes — only what's needed to identify the booking.
+    // Privacy-safe: no diagnosis or clinical notes stored in Google Calendar
     summary: `${kind} · ${r.reference}`,
-    description: `Physiotherapy appointment (${kind.toLowerCase()}).\nReference: ${r.reference}\nDetails are in the website admin dashboard.`,
-    location: r.visit_type === "home" ? [r.locality, r.pin_code].filter(Boolean).join(" ") : "Namma Physio Centre, JP Nagar 8th Phase, Bengaluru",
-    start: { dateTime: istDateTime(date, time), timeZone: TZ },
-    end: { dateTime: addMinutes(date, time, minutes), timeZone: TZ },
+    description: `Physiotherapy appointment (${kind.toLowerCase()}).\nReference: ${r.reference}\nManaged via Namma Physiotherapy Centre website.`,
+    location:
+      r.visit_type === "home"
+        ? [r.locality, r.pin_code].filter(Boolean).join(" ")
+        : "Namma Physiotherapy Centre, JP Nagar 8th Phase, Bengaluru",
+    start: { dateTime: istDateTime(date, time), timeZone: CLINIC_TIMEZONE },
+    end: { dateTime: addMinutes(date, time, minutes), timeZone: CLINIC_TIMEZONE },
     visibility: "private",
   };
 }
@@ -132,9 +179,14 @@ export async function upsertEvent(r: AppointmentRequest, date: string, time: str
 export async function deleteEvent(eventId: string) {
   const token = await accessToken();
   if (!token) return;
-  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId()}/events/${encodeURIComponent(eventId)}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok && res.status !== 404 && res.status !== 410) throw new Error(`Calendar event delete failed (${res.status})`);
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${calendarId()}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  if (!res.ok && res.status !== 404 && res.status !== 410) {
+    throw new Error(`Calendar event delete failed (${res.status})`);
+  }
 }

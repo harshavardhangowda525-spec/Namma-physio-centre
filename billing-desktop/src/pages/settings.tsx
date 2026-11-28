@@ -1,9 +1,11 @@
-import { AlertTriangle, CheckCircle2, FolderOpen, HardDrive, Plus, RotateCcw, ShieldCheck, Upload, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FolderOpen, HardDrive, PenTool, Plus, RotateCcw, ShieldCheck, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { formatDocNumber, financialYear } from "../../shared/billing";
+import type { SavedSignatureInfo } from "../../shared/types";
 import type { Settings } from "../../server/settings";
-import { get, post, put } from "../api";
+import { del, get, post, put } from "../api";
 import { useAuth } from "../auth";
+import { SignatureCanvasPad } from "../signature-pad";
 import { ChangePasswordPage } from "./login";
 import { Button, Empty, ErrorNote, Field, Modal, MoneyInput, PageTitle, fmtDateTime, money, todayLocal, useLoad, useToast } from "../ui";
 
@@ -106,13 +108,20 @@ function SettingsForm({ tab }: { tab: "clinic" | "invoice" | "catalogue" | "priv
     r.onload = () => up("clinic", { logoDataUrl: String(r.result) });
     r.readAsDataURL(file);
   }
+  function onStamp(file: File | undefined) {
+    if (!file) return;
+    if (file.size > 500_000) return setErr("Clinic stamp image must be under 500 KB");
+    const r = new FileReader();
+    r.onload = () => up("clinic", { stampDataUrl: String(r.result) });
+    r.readAsDataURL(file);
+  }
   const fy = financialYear(todayLocal());
   const saveBar = <div className="sticky bottom-0 flex items-center gap-3 bg-cream/90 py-4 backdrop-blur"><Button loading={busy} onClick={save}>Save changes</Button><ErrorNote error={err} /></div>;
 
   if (tab === "clinic")
     return (
       <div className="space-y-6">
-        <Section title="Clinic details" desc="Shown on invoices and receipts.">
+        <Section title="Clinic details" desc="Shown on invoices, payment receipts, and detailed physiotherapy bills.">
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Clinic name"><input className="input" value={s.clinic.name} onChange={(e) => up("clinic", { name: e.target.value })} /></Field>
             <Field label="Tagline"><input className="input" value={s.clinic.tagline} onChange={(e) => up("clinic", { tagline: e.target.value })} /></Field>
@@ -121,15 +130,27 @@ function SettingsForm({ tab }: { tab: "clinic" | "invoice" | "catalogue" | "priv
             <Field label="Email"><input className="input" value={s.clinic.email} onChange={(e) => up("clinic", { email: e.target.value })} /></Field>
             <Field label="GSTIN (if registered)"><input className="input" value={s.clinic.gstin} onChange={(e) => up("clinic", { gstin: e.target.value.toUpperCase() })} /></Field>
             <Field label="Registration line (optional)" hint="e.g. registration number, shown under the address"><input className="input" value={s.clinic.registrationNote} onChange={(e) => up("clinic", { registrationNote: e.target.value })} /></Field>
+            <Field label="Default authorized signer name" hint="Shown under handwritten signatures"><input className="input" value={s.clinic.signerName ?? "Sunil Kumar"} onChange={(e) => up("clinic", { signerName: e.target.value })} /></Field>
+            <Field label="Verified qualification (optional)" hint="Leave blank unless certificate-verified"><input className="input" value={s.clinic.signerQualification ?? ""} onChange={(e) => up("clinic", { signerQualification: e.target.value })} /></Field>
           </div>
         </Section>
-        <Section title="Logo" desc="PNG, JPEG or WebP under 500 KB. Square images work best.">
-          <div className="flex items-center gap-4">
-            <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl border border-line bg-cream">{s.clinic.logoDataUrl ? <img src={s.clinic.logoDataUrl} alt="Clinic logo" className="h-full w-full object-contain" /> : <span className="text-xs text-muted">No logo</span>}</div>
-            <label className="cursor-pointer"><span className="inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-semibold text-navy-900 hover:border-teal-400"><Upload className="h-4 w-4" /> Choose image</span><input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => onLogo(e.target.files?.[0])} /></label>
-            {s.clinic.logoDataUrl && <Button variant="ghost" onClick={() => up("clinic", { logoDataUrl: null })}>Remove</Button>}
-          </div>
-        </Section>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Section title="Clinic Logo" desc="PNG, JPEG or WebP under 500 KB. Square images work best.">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl border border-line bg-cream">{s.clinic.logoDataUrl ? <img src={s.clinic.logoDataUrl} alt="Clinic logo" className="h-full w-full object-contain" /> : <span className="text-xs text-muted">No logo</span>}</div>
+              <label className="cursor-pointer"><span className="inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-semibold text-navy-900 hover:border-teal-400"><Upload className="h-4 w-4" /> Choose logo</span><input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => onLogo(e.target.files?.[0])} /></label>
+              {s.clinic.logoDataUrl && <Button variant="ghost" onClick={() => up("clinic", { logoDataUrl: null })}>Remove</Button>}
+            </div>
+          </Section>
+          <Section title="Clinic Stamp (Optional)" desc="Optional transparent PNG/JPEG clinic seal rendered on signed bills & invoices.">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-2xl border border-line bg-cream">{s.clinic.stampDataUrl ? <img src={s.clinic.stampDataUrl} alt="Clinic stamp" className="h-full w-full object-contain" /> : <span className="text-xs text-muted">No stamp</span>}</div>
+              <label className="cursor-pointer"><span className="inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-semibold text-navy-900 hover:border-teal-400"><Upload className="h-4 w-4" /> Upload stamp</span><input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => onStamp(e.target.files?.[0])} /></label>
+              {s.clinic.stampDataUrl && <Button variant="ghost" onClick={() => up("clinic", { stampDataUrl: null })}>Remove</Button>}
+            </div>
+          </Section>
+        </div>
+        <ReusableSignatureSettings defaultName={s.clinic.signerName ?? "Sunil Kumar"} defaultQualification={s.clinic.signerQualification ?? ""} />
         {saveBar}
       </div>
     );
@@ -137,11 +158,13 @@ function SettingsForm({ tab }: { tab: "clinic" | "invoice" | "catalogue" | "priv
   if (tab === "invoice")
     return (
       <div className="space-y-6">
-        <Section title="Invoice numbering" desc={<>Next invoice will look like <b className="text-navy-900">{formatDocNumber(s.invoice.prefix, s.invoice.resetEachFinancialYear ? fy : null, 1, s.invoice.padding)}</b> (sequence shown as 1).</>}>
+        <Section title="Document numbering & Detailed Bill defaults" desc={<>Next invoice will look like <b className="text-navy-900">{formatDocNumber(s.invoice.prefix, s.invoice.resetEachFinancialYear ? fy : null, 1, s.invoice.padding)}</b> (sequence shown as 1).</>}>
           <div className="grid gap-4 md:grid-cols-3">
             <Field label="Invoice prefix"><input className="input" value={s.invoice.prefix} onChange={(e) => up("invoice", { prefix: e.target.value })} /></Field>
             <Field label="Receipt prefix"><input className="input" value={s.invoice.receiptPrefix} onChange={(e) => up("invoice", { receiptPrefix: e.target.value })} /></Field>
+            <Field label="Detailed Bill prefix"><input className="input" value={s.invoice.detailedBillPrefix ?? "NPC-DB"} onChange={(e) => up("invoice", { detailedBillPrefix: e.target.value })} /></Field>
             <Field label="Number of digits"><input className="input" type="number" min={3} max={8} value={s.invoice.padding} onChange={(e) => up("invoice", { padding: Number(e.target.value) })} /></Field>
+            <Field label="Default Detailed Bill session charge" hint="Applied automatically to new Detailed Bills"><MoneyInput value={s.invoice.defaultSessionChargePaise ?? 120_000} onChange={(v) => up("invoice", { defaultSessionChargePaise: v })} /></Field>
           </div>
           <label className="mt-4 flex items-center gap-2 text-sm"><input type="checkbox" className="accent-teal-600" checked={s.invoice.resetEachFinancialYear} onChange={(e) => up("invoice", { resetEachFinancialYear: e.target.checked })} /> Restart numbering each financial year (April–March) and include the year</label>
           <CounterReset fy={s.invoice.resetEachFinancialYear ? fy : "all"} />
@@ -205,18 +228,132 @@ function SettingsForm({ tab }: { tab: "clinic" | "invoice" | "catalogue" | "priv
   );
 }
 
+function ReusableSignatureSettings({ defaultName, defaultQualification }: { defaultName: string; defaultQualification: string }) {
+  const { can } = useAuth();
+  const toast = useToast();
+  const allowed = can("signatures.manage");
+  const { data: saved, reload } = useLoad(
+    () => (allowed ? get<SavedSignatureInfo>("/signatures/me") : Promise.resolve(null)),
+    [allowed],
+  );
+  const [drawing, setDrawing] = useState(false);
+  const [png, setPng] = useState<string | null>(null);
+  const [signerName, setSignerName] = useState(defaultName);
+  const [signerQual, setSignerQual] = useState(defaultQualification);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (saved) {
+      setSignerName(saved.signerName || defaultName);
+      setSignerQual(saved.signerQualification || defaultQualification);
+    }
+  }, [saved, defaultName, defaultQualification]);
+
+  if (!allowed) return null;
+
+  return (
+    <Section
+      title="Electronic Handwritten Signature (Authorized Clinician)"
+      desc="Draw and securely store your handwritten signature using your smartphone touchscreen, stylus, or mouse. Applying it to any bill or invoice still requires your explicit per-document confirmation."
+    >
+      {saved?.hasSaved && saved.imageDataUrl && !drawing ? (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-cream/60 p-4">
+          <div className="flex items-center gap-4">
+            <img src={saved.imageDataUrl} alt="Saved handwritten signature" className="h-16 rounded-lg bg-white px-3 py-1 object-contain ring-1 ring-line" />
+            <div className="text-sm">
+              <p className="font-semibold text-navy-900">{saved.signerName}</p>
+              {saved.signerQualification && <p className="text-xs text-muted">{saved.signerQualification}</p>}
+              <p className="text-xs text-muted">Encrypted locally · Updated {fmtDateTime(saved.updatedAt)}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="secondary" onClick={() => setDrawing(true)}>
+              <PenTool className="h-3.5 w-3.5" /> Replace signature
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="!text-rose-700"
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await del("/signatures/me");
+                  toast("Saved signature deleted");
+                  reload();
+                } catch (e) {
+                  toast((e as Error).message, "error");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Signer name"><input className="input" value={signerName} onChange={(e) => setSignerName(e.target.value)} /></Field>
+            <Field label="Verified qualification (optional)"><input className="input" value={signerQual} onChange={(e) => setSignerQual(e.target.value)} placeholder="Leave blank unless verified" /></Field>
+          </div>
+          <SignatureCanvasPad onChange={setPng} />
+          <ErrorNote error={err} />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              loading={busy}
+              disabled={!png}
+              onClick={async () => {
+                if (!png) return;
+                setBusy(true);
+                setErr(null);
+                try {
+                  await put("/signatures/me", {
+                    imageDataUrl: png,
+                    signerName: signerName.trim() || defaultName,
+                    signerQualification: signerQual.trim(),
+                  });
+                  toast("Reusable handwritten signature saved securely");
+                  setDrawing(false);
+                  setPng(null);
+                  reload();
+                } catch (e) {
+                  setErr((e as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <PenTool className="h-4 w-4" /> Save reusable signature
+            </Button>
+            {drawing && (
+              <Button type="button" variant="ghost" onClick={() => (setDrawing(false), setErr(null))}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
 function CounterReset({ fy }: { fy: string }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [n, setN] = useState(1);
-  const [kind, setKind] = useState<"invoice" | "receipt">("invoice");
+  const [kind, setKind] = useState<"invoice" | "receipt" | "detailed_bill">("invoice");
   return (
     <>
       <Button variant="ghost" size="sm" className="mt-3" onClick={() => setOpen(true)}>Set starting number…</Button>
       <Modal open={open} onClose={() => setOpen(false)} title="Set starting number">
         <div className="space-y-4 text-sm">
           <p className="text-muted">Use this when moving from a paper register, so numbering continues where you left off. Existing numbers are never reused.</p>
-          <Field label="Document"><select className="input" value={kind} onChange={(e) => setKind(e.target.value as "invoice" | "receipt")}><option value="invoice">Invoices</option><option value="receipt">Receipts</option></select></Field>
+          <Field label="Document"><select className="input" value={kind} onChange={(e) => setKind(e.target.value as "invoice" | "receipt" | "detailed_bill")}><option value="invoice">Invoices</option><option value="receipt">Receipts</option><option value="detailed_bill">Detailed Physiotherapy Bills</option></select></Field>
           <Field label={`Next number (${fy === "all" ? "all years" : `FY ${fy}`})`}><input className="input" type="number" min={1} value={n} onChange={(e) => setN(Number(e.target.value))} /></Field>
           <Button onClick={async () => { await post("/settings/counters", { kind, scope: fy, nextNumber: n }); toast("Starting number updated"); setOpen(false); }}>Save</Button>
         </div>

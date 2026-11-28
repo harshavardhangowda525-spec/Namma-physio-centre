@@ -10,6 +10,7 @@ import { PatientsPage, PatientDetailPage } from "./pages/patients";
 import { InvoicesPage } from "./pages/invoices";
 import { InvoiceEditorPage } from "./pages/invoice-editor";
 import { InvoiceViewPage, ReceiptViewPage } from "./pages/invoice-view";
+import { DetailedBillsPage, DetailedBillBuilderPage } from "./pages/detailed-bills";
 import { AppointmentsPage } from "./pages/appointments";
 import { AppointmentInquiriesPage } from "./pages/inquiries";
 import { ReportsPage } from "./pages/reports";
@@ -32,6 +33,9 @@ function Gate() {
         <Route path="invoices/new" element={<InvoiceEditorPage />} />
         <Route path="invoices/:id/edit" element={<InvoiceEditorPage />} />
         <Route path="invoices/:id" element={<InvoiceViewPage />} />
+        <Route path="detailed-bills" element={<DetailedBillsPage />} />
+        <Route path="detailed-bills/new" element={<DetailedBillBuilderPage />} />
+        <Route path="detailed-bills/:id" element={<DetailedBillBuilderPage />} />
         <Route path="receipts/:id" element={<ReceiptViewPage />} />
         <Route path="appointments" element={<AppointmentsPage />} />
         <Route path="inquiries" element={<AppointmentInquiriesPage />} />

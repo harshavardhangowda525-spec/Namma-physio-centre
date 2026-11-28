@@ -1,25 +1,15 @@
 # Website: setup & deployment
 
-Next.js 15 · TypeScript · Tailwind CSS 4 · Motion · Radix Dialog · Neon Postgres · Resend
+Next.js 15 · TypeScript · Tailwind CSS 4 · Motion · Radix Dialog · Neon Postgres · Gmail OAuth 2.0 / Resend
 
-## 0. Current deployment
+## 0. Current deployment & branches
 | | |
 |---|---|
-| Live site | https://namma-physio-centre-psi.vercel.app |
-| Vercel project | `namma-physio-centre` (team *infinity web and apps*), root directory `website/`, functions in Singapore (`sin1`), Node 22 |
-| Database | Neon project `namma-physio-website` (Singapore, `aws-ap-southeast-1`). Schema applied. |
-| Configured env vars | `DATABASE_URL`, `NEXT_PUBLIC_SITE_URL` |
-| Still to add | `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET` (enables `/admin`), `RESEND_*`, `GOOGLE_*` |
-
-Vercel's production branch is `main`. This first release was deployed from the `claude/laughing-turing-saug5v` branch; merge it into `main` so future pushes deploy automatically.
-
-**Enable the clinic admin page** (choose your own password, never share it):
-```bash
-cd website
-npm run admin:hash -- "your-own-strong-password"   # copy the printed ADMIN_PASSWORD_HASH value
-openssl rand -hex 32                               # use as ADMIN_SESSION_SECRET
-```
-Add both in Vercel → Project → Settings → Environment Variables (type *Sensitive*, Production), then redeploy.
+| Live production (`main`) | https://namma-physio-centre-psi.vercel.app |
+| Preview branch | `feat/client-enhancements-v2` (deploy to Vercel Preview first; merge to `main` only after client approval) |
+| Clean backup branch | `backup/pre-enhancements-20261127` |
+| Vercel project | `namma-physio-centre` (root directory `website/`, Singapore `sin1`, Node 22) |
+| Database | Neon project `namma-physio-website` (`aws-ap-southeast-1`) |
 
 ## 1. Local development
 ```bash
@@ -28,51 +18,56 @@ npm install
 cp .env.example .env.local     # values are optional for local work
 npm run dev                    # http://localhost:3000
 ```
-Without `DATABASE_URL`, booking requests are kept **in memory** in development so the form works. Production refuses to run bookings without a database, so requests are never silently lost.
+Without `DATABASE_URL`, booking requests and action tokens run safely **in memory** during local development so the full booking + doctor approval flow can be tested offline. Production requires `DATABASE_URL`.
 
-## 2. Environment variables
+## 2. Environment variables (`website/.env.example`)
 | Variable | Purpose |
 |---|---|
-| `NEXT_PUBLIC_SITE_URL` | Canonical URL, e.g. `https://www.nammaphysiocentre.in` |
-| `DATABASE_URL` | Neon **pooled** connection string |
-| `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL`, `NOTIFY_TO_EMAIL` | New-booking email to the clinic. The sender domain must be verified in Resend. |
-| `ADMIN_PASSWORD_HASH` | Run `npm run admin:hash -- "a-strong-password"` |
-| `ADMIN_SESSION_SECRET` | 32+ random characters (`openssl rand -hex 32`) |
-| `GOOGLE_PLACES_API_KEY`, `GOOGLE_PLACE_ID` | Live Google rating, count and reviews |
-| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`, `GOOGLE_CALENDAR_ID` | Optional Google Calendar integration |
+| `NEXT_PUBLIC_SITE_URL` | Canonical public URL, e.g. `https://namma-physio-centre-psi.vercel.app` |
+| `DATABASE_URL` | Neon **pooled** Postgres connection string |
+| `ADMIN_PASSWORD_HASH` | Generate via `npm run admin:hash -- "your-strong-password"` |
+| `ADMIN_SESSION_SECRET` | 32+ random hex chars (`openssl rand -hex 32`) |
+| `APPOINTMENT_ACTION_TOKEN_SECRET` | Secret for signing expiring doctor/patient action links (falls back to `ADMIN_SESSION_SECRET` if unset) |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | Shared Google Cloud Web OAuth 2.0 client for Gmail notifications, Google Calendar, and Google Business Profile reviews |
+| `CALENDAR_TOKEN_ENCRYPTION_KEY` | 64 hex chars (`openssl rand -hex 32`) used to AES-256-GCM encrypt Gmail, Calendar, and GBP refresh tokens at rest in Neon |
+| `GMAIL_NOTIFICATION_EMAIL` | Target doctor Gmail inbox (`Smilewithsidhu2008@gmail.com`) |
+| `GOOGLE_CALENDAR_ID` | Calendar ID (`primary` by default) |
+| `GOOGLE_PLACES_API_KEY`, `GOOGLE_PLACE_ID` | Places API (New) fallback for live rating, total review count, and latest 5 reviews |
+| `GOOGLE_GBP_ACCOUNT_ID`, `GOOGLE_GBP_LOCATION_ID` | Optional explicit Google Business Profile IDs for full dynamic review sync |
+| `CRON_SECRET` | Bearer secret authenticating Vercel Cron (`/api/cron/reviews-sync`, scheduled `0 */8 * * *` in `vercel.json`) |
+| `RESEND_API_KEY`, `NOTIFY_FROM_EMAIL`, `NOTIFY_TO_EMAIL` | Optional transactional email fallback when Gmail OAuth is not yet connected |
+| `NEXT_PUBLIC_SHOW_EXPANDED_DEV_CTA` | Keep `false` unless the clinic owner approves the expanded Infinity Web & Apps footer CTA |
 
-## 3. Database (Neon)
-1. Create a Neon project in the nearest available region (Singapore, `aws-ap-southeast-1`; Mumbai is not offered on the current plan) and copy the pooled connection string.
-2. `DATABASE_URL=… npm run db:migrate` creates the `appointment_requests`, `imported_reviews` and `integration_tokens` tables (`db/schema.sql`).
+## 3. Database schema & reversible migrations (Neon)
+- Full fresh schema: `website/db/schema.sql` (`DATABASE_URL=… npm run db:migrate`).
+- Incremental upgrade for existing production/staging databases:
+  - Apply: `psql "$DATABASE_URL" -f db/migrations/002_enhancements_v2.sql`
+  - Rollback (if ever needed): `psql "$DATABASE_URL" -f db/migrations/002_enhancements_v2_down.sql`
+- Preserves existing `appointment_requests`, `imported_reviews`, and `integration_tokens` records and keeps `POST /api/inquiries/pair` + `GET /api/inquiries/sync` 100% compatible with `billing-desktop/`.
 
-This database holds **website requests only**. It is never connected to the billing app.
+## 4. Gmail OAuth 2.0 & Doctor Appointment Approval Workflow
+1. **Patient submits `/book` (or homepage enquiry)**:
+   - Validated on client and server (Indian phone validation, optional patient email for confirmation, honeypot, origin check, rate limiting, duplicate submission guard).
+   - Stored as `pending_approval` (never auto-confirmed).
+2. **Instant Doctor Notification (`Smilewithsidhu2008@gmail.com`)**:
+   - Sent via Gmail API OAuth 2.0 (`src/lib/gmail.ts`, fallback to Resend if configured) with deduplication and retry logging in `email_delivery_logs`.
+   - Contains structured patient & slot details, one-tap **Call Patient** / **WhatsApp** links, and secure signed links to `/appointments/manage/[token]` (72-hour expiry, SHA-256 hashed in `appointment_action_tokens`).
+3. **Mobile-Friendly Doctor Action Page (`/appointments/manage/[token]`)**:
+   - Doctor can **Approve & Confirm**, **Propose New Date/Time**, or **Decline** directly from a smartphone without opening `billing-desktop/` or logging into `/admin` (also manageable from `/admin`).
+   - Checks for overlapping confirmed appointments and Google Calendar free/busy conflicts.
+4. **Patient Confirmation / Reschedule Loop**:
+   - On approval: creates/updates Google Calendar event (if connected) and emails patient confirmation (if patient email was provided) + provides 1-tap WhatsApp confirmation link.
+   - On reschedule proposal: emails patient a signed `/appointments/respond/[token]` link where the patient can accept the new slot, request another time, or cancel.
 
-## 4. Booking workflow
-1. The patient picks a Clinic Visit or a Home Visit and submits preferred times. The form is validated on both client and server, with a honeypot field, an origin check and rate limiting.
-2. The request is stored as **Requested**, the clinic gets an email (no free-text notes are emailed), and the patient sees a reference such as `NPC-261121-AB3CD`.
-3. The clinic signs in at `/admin` and confirms, reschedules, rejects or cancels. Confirming checks for overlaps with other confirmed bookings and, when connected, Google Calendar free/busy. A "Message patient" button opens WhatsApp with a pre-filled note.
-4. The site never shows an appointment as confirmed. The clinic confirms by phone or WhatsApp.
+### Connecting Gmail OAuth 2.0 in Google Cloud
+1. In Google Cloud Console → **APIs & Services**, enable **Gmail API**, **Google Calendar API**, and (if approved) **My Business Account Management API** / **Google My Business API**.
+2. Under **Credentials → OAuth 2.0 Client IDs (Web application)**, add authorized redirect URIs:
+   - `https://<your-domain>/api/admin/gmail/callback`
+   - `https://<your-domain>/api/admin/calendar/callback`
+   - `https://<your-domain>/api/admin/google-reviews/callback`
+3. Sign in to `/admin` and click **Connect Gmail (`Smilewithsidhu2008@gmail.com`)**. Refresh tokens are stored AES-256-GCM encrypted in `integration_tokens`.
 
-## 5. Google Calendar (optional)
-1. In Google Cloud, create an OAuth client (Web application) and add the redirect URI `https://<your-domain>/api/admin/calendar/callback`.
-2. Enable the Google Calendar API. Scopes used: `calendar.events` and `calendar.freebusy`.
-3. Set the env vars, then click **Connect Google Calendar** on `/admin`.
-
-The refresh token is stored AES-256-GCM-encrypted on the server, and no credentials ever reach the browser. Event titles contain only "Clinic visit · reference" or "Home visit · reference". Reasons and notes are never added to the calendar.
-
-## 6. Google reviews: what is and isn't possible
-- The **Places API (New)** returns the rating, the total count and **at most 5 reviews**. The site shows those, the accurate total (e.g. 469), and a "Read all reviews on Google" link.
-- The **Business Profile API** can list all reviews, but only for the verified owner's account, after Google grants API access, and its display terms must be followed. If the owner gets this access, export the reviews to JSON and run:
-  `npm run reviews:import -- reviews.json --source "Business Profile export, <date>"`
-  The importer rejects duplicates and empty or invalid records. It never pads the count.
-- Until then, the site shows three **summaries** of the supplied review excerpts, clearly marked as not direct quotes.
-
-## 7. Deploy (Vercel recommended)
-1. Import the repository and set **Root Directory** to `website`.
-2. Add the environment variables above (Production).
-3. Deploy, then add the custom domain.
-4. Check: `/`, `/services`, `/book`, `/reviews`, `/contact`, `/admin/login`, `/sitemap.xml`, `/robots.txt`.
-
-## 8. Replacing placeholder content
-- Photos go in `website/public/images/…`. Set the `image` path on a service, `doctor.photo`, or the `src` values in `components/gallery.tsx`.
-- Clinic facts: `src/content/clinic.ts`. Services: `src/content/services.ts`. Booking options: `src/content/booking.ts`.
+## 5. Dynamic Google Reviews Synchronization
+- **Tier 1 — Google Business Profile OAuth (`/api/admin/google-reviews/connect`)**: Syncs all authorized clinic reviews into `imported_reviews` (`is_verified_quote = TRUE`) and refreshes automatically every 8 hours via `/api/cron/reviews-sync` (`vercel.json`).
+- **Tier 2 — Google Places API (New)**: Fetches live rating, total review count, and up to 5 Google-selected reviews (`revalidate: 3600`, cached in `google_reviews_sync_meta`). Note: Google's Places API enforces a platform hard cap of 5 review texts per Place.
+- **Tier 3 — Offline Fallback**: Displays last synced database reviews or honest labelled summaries of clinic-supplied excerpts without fabricating quotes or counts.

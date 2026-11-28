@@ -1,4 +1,4 @@
-import { clinic, siteUrl } from "@/content/clinic";
+import { clinic, doctor, siteUrl } from "@/content/clinic";
 import { publicServices } from "@/content/services";
 
 export function clinicJsonLd() {
@@ -6,6 +6,7 @@ export function clinicJsonLd() {
     "@context": "https://schema.org",
     "@type": ["MedicalBusiness", "Physiotherapy"],
     name: clinic.name,
+    alternateName: clinic.legalAltName,
     url: siteUrl,
     telephone: clinic.phoneE164,
     address: {
@@ -19,6 +20,15 @@ export function clinicJsonLd() {
     geo: { "@type": "GeoCoordinates", latitude: clinic.geo.lat, longitude: clinic.geo.lng },
     hasMap: clinic.google.mapsUrl,
     areaServed: "JP Nagar, Bengaluru",
-    availableService: publicServices.map((s) => ({ "@type": "MedicalTherapy", name: s.title })),
+    employee: {
+      "@type": "Person",
+      name: doctor.name,
+      jobTitle: doctor.role,
+    },
+    availableService: publicServices.map((s) => ({
+      "@type": "MedicalTherapy",
+      name: s.title,
+      description: s.short,
+    })),
   };
 }

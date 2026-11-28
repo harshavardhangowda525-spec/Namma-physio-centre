@@ -11,6 +11,7 @@ import { openDatabase } from "./db";
 import { startInquirySync } from "./inquiry-sync";
 import { adminRoutes, authRoutes } from "./routes/admin";
 import { coreRoutes, HttpError } from "./routes/core";
+import { detailedBillAndSignatureRoutes } from "./routes/detailed-bills";
 import { inquiryRoutes, inquiryWebhookRoutes } from "./routes/inquiries";
 import { reportRoutes } from "./routes/reports";
 
@@ -91,6 +92,7 @@ export function createApp(ctx: Ctx, opts: { staticDir?: string | null; allowedPo
   api.use(authRoutes(ctx));
   api.use(requireAuth);
   api.use(coreRoutes(ctx));
+  api.use(detailedBillAndSignatureRoutes(ctx));
   api.use(inquiryRoutes(ctx));
   api.use(reportRoutes(ctx));
   api.use(adminRoutes(ctx));

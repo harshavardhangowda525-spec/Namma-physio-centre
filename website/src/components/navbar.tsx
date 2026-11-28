@@ -10,7 +10,6 @@ import { Magnetic } from "./motion";
 import { clinic } from "@/content/clinic";
 import { navLinks } from "@/content/nav";
 
-
 export function Navbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -19,10 +18,12 @@ export function Navbar() {
   const menuBtn = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  useMotionValueEvent(scrollY, "change", (v) => setScrolled(v > 24));
+  useMotionValueEvent(scrollY, "change", (v) => setScrolled(v > 20));
   useEffect(() => setOpen(false), [pathname]);
 
-  // Mobile menu: lock scroll, Escape to close, focus trap.
+  // Hide public navbar on standalone doctor approval / patient response screens for distraction-free focus
+  const isStandaloneFlow = pathname.startsWith("/appointments/");
+
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -54,6 +55,8 @@ export function Navbar() {
     };
   }, [open]);
 
+  if (isStandaloneFlow) return null;
+
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
@@ -67,72 +70,105 @@ export function Navbar() {
       <motion.header
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5"
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed inset-x-0 top-0 z-50 px-2.5 pt-2.5 sm:px-5 sm:pt-3"
       >
-        <nav
-          aria-label="Primary"
-          className={`container-px flex h-16 items-center justify-between rounded-full transition-all duration-500 sm:h-[72px] ${
-            scrolled ? "glass max-w-6xl shadow-[var(--shadow-soft)]" : "border border-transparent bg-transparent"
+        <div
+          className={`container-px rounded-2xl transition-all duration-500 lg:rounded-3xl ${
+            scrolled
+              ? "glass max-w-7xl shadow-[var(--shadow-soft)]"
+              : "border border-line/60 bg-ivory/90 shadow-[0_2px_16px_-8px_rgb(11_31_58/0.08)] backdrop-blur-md"
           }`}
         >
-          <Link href="/" aria-label={`${clinic.name}, home`} className="rounded-xl">
-            <Logo />
-          </Link>
+          {/* Upper Row: Prominent Clinic Identity + Appointment Enquiry CTA */}
+          <div className="flex min-h-16 items-center justify-between gap-3 py-2.5 sm:py-3">
+            <Link href="/" aria-label={`${clinic.name}, home`} className="min-w-0 rounded-xl">
+              <Logo prominent />
+            </Link>
 
-          <ul className="hidden items-center gap-1 lg:flex">
-            {navLinks.slice(1).map((l) => (
-              <li key={l.href}>
-                <Link
-                  href={l.href}
-                  aria-current={isActive(l.href) ? "page" : undefined}
-                  className="relative rounded-full px-3.5 py-2 text-[14.5px] font-medium text-navy-800 transition-colors hover:text-teal-600"
-                >
-                  {isActive(l.href) && (
-                    <motion.span
-                      layoutId="nav-pill"
-                      className="absolute inset-0 -z-10 rounded-full bg-teal-50 ring-1 ring-teal-100"
-                      transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                    />
-                  )}
-                  {l.label}
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <a
+                href={`tel:${clinic.phoneE164}`}
+                className="hidden items-center gap-2 rounded-full border border-line bg-white/90 px-4 py-2 text-sm font-semibold text-navy-900 transition hover:border-teal-300 hover:text-teal-700 xl:inline-flex"
+              >
+                <Phone className="h-3.5 w-3.5 text-teal-600" aria-hidden />
+                {clinic.phoneDisplay}
+              </a>
+
+              <Magnetic className="hidden sm:block">
+                <Link href="/book" className={buttonClass("primary", "sm", "h-11 px-5")}>
+                  <CalendarCheck className="h-4 w-4" aria-hidden />
+                  Book an Appointment
                 </Link>
-              </li>
-            ))}
-          </ul>
+              </Magnetic>
 
-          <div className="flex items-center gap-2">
-            <Magnetic className="hidden sm:block">
-              <Link href="/book" className={buttonClass("primary", "sm", "h-11 px-5")}>
+              <Link
+                href="/book"
+                aria-label="Book an Appointment"
+                className="grid h-10 w-10 place-items-center rounded-full bg-navy-900 text-white shadow-[var(--shadow-soft)] sm:hidden"
+              >
                 <CalendarCheck className="h-4 w-4" aria-hidden />
-                Book an Appointment
               </Link>
-            </Magnetic>
-            <button
-              ref={menuBtn}
-              type="button"
-              onClick={() => setOpen((o) => !o)}
-              aria-expanded={open}
-              aria-controls="mobile-menu"
-              aria-label={open ? "Close menu" : "Open menu"}
-              className="grid h-11 w-11 place-items-center rounded-full border border-line bg-white/80 text-navy-900 backdrop-blur lg:hidden"
-            >
-              <AnimatePresence initial={false} mode="wait">
-                <motion.span
-                  key={open ? "x" : "m"}
-                  initial={{ rotate: -90, opacity: 0 }}
-                  animate={{ rotate: 0, opacity: 1 }}
-                  exit={{ rotate: 90, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </motion.span>
-              </AnimatePresence>
-            </button>
+
+              <button
+                ref={menuBtn}
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                aria-expanded={open}
+                aria-controls="mobile-menu"
+                aria-label={open ? "Close menu" : "Open menu"}
+                className="grid h-10 w-10 place-items-center rounded-full border border-line bg-white/90 text-navy-900 backdrop-blur sm:h-11 sm:w-11 lg:hidden"
+              >
+                <AnimatePresence initial={false} mode="wait">
+                  <motion.span
+                    key={open ? "x" : "m"}
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                  </motion.span>
+                </AnimatePresence>
+              </button>
+            </div>
           </div>
-        </nav>
+
+          {/* Lower Navigation Row (Desktop) */}
+          <nav
+            aria-label="Primary"
+            className="hidden border-t border-line/70 py-1.5 lg:block"
+          >
+            <ul className="flex items-center gap-1.5">
+              {navLinks.map((l) => {
+                const active = isActive(l.href);
+                return (
+                  <li key={l.href}>
+                    <Link
+                      href={l.href}
+                      aria-current={active ? "page" : undefined}
+                      className={`relative inline-flex items-center rounded-full px-4 py-1.5 text-[14px] font-medium transition-colors ${
+                        active ? "font-semibold text-teal-800" : "text-navy-800 hover:text-teal-700"
+                      }`}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="nav-pill"
+                          className="absolute inset-0 -z-10 rounded-full bg-teal-50 ring-1 ring-teal-200/80"
+                          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                        />
+                      )}
+                      {l.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
       </motion.header>
 
+      {/* Mobile Navigation Drawer */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -141,19 +177,19 @@ export function Navbar() {
             role="dialog"
             aria-modal="true"
             aria-label="Site menu"
-            className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-ivory/95 px-6 pt-28 pb-8 backdrop-blur-xl lg:hidden"
-            initial={{ clipPath: "circle(0% at calc(100% - 44px) 44px)" }}
-            animate={{ clipPath: "circle(150% at calc(100% - 44px) 44px)" }}
-            exit={{ clipPath: "circle(0% at calc(100% - 44px) 44px)" }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-ivory/98 px-6 pt-26 pb-8 backdrop-blur-xl lg:hidden"
+            initial={{ clipPath: "circle(0% at calc(100% - 40px) 40px)" }}
+            animate={{ clipPath: "circle(150% at calc(100% - 40px) 40px)" }}
+            exit={{ clipPath: "circle(0% at calc(100% - 40px) 40px)" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
             <ul className="flex flex-col gap-1">
               {navLinks.map((l, i) => (
                 <motion.li
                   key={l.href}
-                  initial={{ opacity: 0, x: -24 }}
+                  initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.12 + i * 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ delay: 0.08 + i * 0.04, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <Link
                     href={l.href}
@@ -169,9 +205,9 @@ export function Navbar() {
             </ul>
             <motion.div
               className="mt-auto grid gap-3 pt-6"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 }}
+              transition={{ delay: 0.35 }}
             >
               <Link href="/book" className={buttonClass("primary", "lg")}>
                 <CalendarCheck className="h-5 w-5" aria-hidden /> Book an Appointment

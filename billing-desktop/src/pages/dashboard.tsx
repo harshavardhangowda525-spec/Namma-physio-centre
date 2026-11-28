@@ -1,4 +1,4 @@
-import { AlertCircle, CalendarDays, FilePlus2, IndianRupee, Table2, BarChart3, UserPlus, Users, Wallet } from "lucide-react";
+import { AlertCircle, CalendarDays, FilePlus2, FileSpreadsheet, IndianRupee, Table2, BarChart3, UserPlus, Users, Wallet } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { get } from "../api";
@@ -162,6 +162,7 @@ export function DashboardPage() {
         subtitle={new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         actions={<>
           {can("patients.write") && <Button variant="secondary" onClick={() => nav("/patients?new=1")}><UserPlus className="h-4 w-4" /> New patient</Button>}
+          {can("detailed_bills.write") && <Button variant="secondary" onClick={() => nav("/detailed-bills/new")}><FileSpreadsheet className="h-4 w-4" /> Detailed physiotherapy bill</Button>}
           {can("invoices.write") && <Button onClick={() => nav("/invoices/new")}><FilePlus2 className="h-4 w-4" /> New invoice</Button>}
         </>}
       />

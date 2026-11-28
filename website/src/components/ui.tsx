@@ -106,27 +106,55 @@ export function GoogleG({ size = 18 }: { size?: number }) {
   );
 }
 
-export function Logo({ className = "", light = false }: { className?: string; light?: boolean }) {
+/**
+ * Preserves the approved Namma Physiotherapy Centre mark until the client
+ * selects one of the proposed concepts at /brand-concepts.
+ */
+export function Logo({
+  className = "",
+  light = false,
+  prominent = false,
+}: {
+  className?: string;
+  light?: boolean;
+  prominent?: boolean;
+}) {
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden className="shrink-0">
+    <span className={`inline-flex min-w-0 items-center gap-3 ${className}`}>
+      <svg
+        width={prominent ? "44" : "38"}
+        height={prominent ? "44" : "38"}
+        viewBox="0 0 40 40"
+        aria-hidden
+        className={`shrink-0 ${prominent ? "h-9 w-9 sm:h-11 sm:w-11" : ""}`}
+      >
         <defs>
-          <linearGradient id="lg-np" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={light ? "lg-np-light" : "lg-np"} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#16978d" />
             <stop offset="1" stopColor="#5cc8e0" />
           </linearGradient>
         </defs>
         <rect width="40" height="40" rx="12" fill={light ? "#ffffff" : "#0b1f3a"} />
-        <path d="M11 27c3-9 6-14 9-14s5 5 9 14" stroke="url(#lg-np)" strokeWidth="3.2" fill="none" strokeLinecap="round" />
-        <circle cx="20" cy="10.5" r="2.6" fill="url(#lg-np)" />
+        <path d="M11 27c3-9 6-14 9-14s5 5 9 14" stroke={`url(#${light ? "lg-np-light" : "lg-np"})`} strokeWidth="3.2" fill="none" strokeLinecap="round" />
+        <circle cx="20" cy="10.5" r="2.6" fill={`url(#${light ? "lg-np-light" : "lg-np"})`} />
         <path d="M14 30h12" stroke={light ? "#0b1f3a" : "#ffffff"} strokeOpacity=".5" strokeWidth="2" strokeLinecap="round" />
       </svg>
-      <span className="leading-none">
-        <span className={`block font-display text-[19px] font-semibold tracking-tight ${light ? "text-white" : "text-navy-900"}`}>
-          Namma Physio
+      <span className="min-w-0 leading-tight">
+        <span
+          className={`block font-display font-semibold tracking-tight ${
+            prominent
+              ? "text-[17px] leading-[1.12] sm:text-[23px] lg:text-[28px] xl:text-[30px]"
+              : "text-[19px]"
+          } ${light ? "text-white" : "text-navy-900"}`}
+        >
+          Namma Physiotherapy Centre
         </span>
-        <span className={`mt-1 block text-[10.5px] font-semibold tracking-[0.22em] uppercase ${light ? "text-teal-200" : "text-teal-600"}`}>
-          Centre · JP Nagar
+        <span
+          className={`mt-0.5 block font-semibold tracking-[0.18em] uppercase ${
+            prominent ? "text-[10px] sm:text-[11px]" : "text-[10.5px]"
+          } ${light ? "text-teal-200" : "text-teal-700"}`}
+        >
+          JP Nagar 8th Phase · Bengaluru
         </span>
       </span>
     </span>
